@@ -1,0 +1,15 @@
+ToshkanTaksi/
+├── bot.py
+├── config.py
+├── handlers/
+│   ├── start.py
+│   └── utils.py
+│── keyboards/
+│   └── start_kb.py
+│
+└── README.md
+Тугмалар:
+
+InlineKeyboardMarkup — инлайн клавиатурани яратиш учун.
+
+InlineKeyboardButton — инлайн тугмани яратиш учун.

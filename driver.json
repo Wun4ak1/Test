@@ -1,0 +1,156 @@
+{
+    "7233540342": {
+        "id": "7233540342",
+        "status": "driver",
+        "profile": {
+            "name": "Вали",
+            "phone": "+998945754433",
+            "car_model": "Ласетти",
+            "car_number": "50А197АА",
+            "seat_count": "4"
+        },
+        "rating": 1.0,
+        "approved": true,
+        "order": {
+            "status": "on_the_way",
+            "available_seats": 3,
+            "to_region": "Тошкент ш.",
+            "to_district": "Шайхонтоҳур",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-04-26",
+            "time": "16:00 - 19:59",
+            "order_number": 2,
+            "status_timestamps": {
+                "created": "2025-04-26 17:06:34",
+                "on_the_way": "2025-04-26 18:25:15"
+            },
+            "accepted_passengers": [
+                {
+                    "passenger_id": "6580111328",
+                    "price": 140000
+                }
+            ]
+        }
+    },
+    "209550763": {
+        "id": "209550763",
+        "status": "driver",
+        "profile": {
+            "name": "Али",
+            "phone": "+998945755500",
+            "car_model": "Нексия 2",
+            "car_number": "01A123BC",
+            "seat_count": "4"
+        },
+        "rating": 0,
+        "approved": true
+    },
+    "517984311": {
+        "id": "517984311",
+        "status": "driver",
+        "profile": {
+            "name": "Абдурасул",
+            "phone": "+998953802424",
+            "car_model": "Jentra",
+            "car_number": "50 U 974 ZA",
+            "seat_count": "4"
+        },
+        "rating": 1.0,
+        "approved": true
+    },
+    "6655826848": {
+        "id": "6655826848",
+        "status": "driver",
+        "profile": {
+            "name": "Абдурасул",
+            "phone": "+998953802424",
+            "car_model": "Jentra",
+            "car_number": "50 U 974 ZA",
+            "seat_count": "4"
+        },
+        "rating": 1.0,
+        "approved": true,
+        "order": {
+            "status": "new",
+            "available_seats": 4,
+            "to_region": "Тошкент",
+            "to_district": "Ангрен",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-04-27",
+            "time": "16:00 - 19:59",
+            "order_number": 1,
+            "status_timestamps": {
+                "created": "2025-04-25 01:25:34"
+            }
+        }
+    },
+    "550615457": {
+        "id": "550615457",
+        "status": "driver",
+        "profile": {
+            "name": "MUJOHIDXON",
+            "phone": "+99841737710",
+            "car_model": "Jentra",
+            "car_number": "50 Y 406 BB",
+            "seat_count": "4"
+        },
+        "rating": 1.0,
+        "approved": true,
+        "order": {
+            "status": "new",
+            "available_seats": 2,
+            "to_region": "Тошкент ш.",
+            "to_district": "Юнусобод",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-04-26",
+            "time": "06:00 - 11:59",
+            "order_number": 1,
+            "status_timestamps": {
+                "created": "2025-04-26 00:05:05"
+            }
+        }
+    },
+    "1124112611": {
+        "id": "1124112611",
+        "status": "driver",
+        "profile": {
+            "name": "Мухриддин",
+            "phone": "+998907530113",
+            "car_model": "Кобалт",
+            "car_number": "50 W 439 NA",
+            "seat_count": "4"
+        },
+        "rating": 1.0,
+        "approved": true
+    },
+    "5617902876": {
+        "id": "5617902876",
+        "status": "driver",
+        "profile": {
+            "name": "Baxtiyor",
+            "phone": "+998930910386",
+            "car_model": "Kobalt",
+            "car_number": "50Q029DB",
+            "seat_count": "4"
+        },
+        "rating": 0,
+        "approved": true,
+        "order": {
+            "status": "new",
+            "available_seats": 4,
+            "to_region": "Тошкент ш.",
+            "to_district": "Яшнобод",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-04-27",
+            "time": "06:00 - 11:59",
+            "order_number": 1,
+            "status_timestamps": {
+                "created": "2025-04-26 22:09:41"
+            }
+        }
+    }
+}

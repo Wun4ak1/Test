@@ -1,0 +1,11 @@
+2025-04-15 18:07:15,555 - INFO - Файл топилди: C:\Users\User\Bots\ToshkanTaksi\user_statuses.json
+2025-04-15 18:07:16,046 - INFO - \U0001f916 Бот ишга тушди!
+2025-04-15 18:07:16,047 - INFO - Start polling
+2025-04-15 18:07:16,391 - INFO - Run polling for bot @ToshkanTaksiBot id=1080517999 - 'Тошкан Такси'
+2025-04-15 18:07:20,766 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-04-15 18:07:20,766 - WARNING - Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 1080517999)
+2025-04-15 18:07:26,336 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-04-15 18:07:26,337 - WARNING - Sleep for 1.193328 seconds and try again... (tryings = 1, bot id = 1080517999)
+2025-04-15 18:07:32,459 - ERROR - Failed to fetch updates - TelegramConflictError: Telegram server says - Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-04-15 18:07:32,459 - WARNING - Sleep for 1.566426 seconds and try again... (tryings = 2, bot id = 1080517999)
+2025-04-15 18:07:44,142 - INFO - Connection established (tryings = 3, bot id = 1080517999)

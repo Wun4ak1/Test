@@ -1,0 +1,34 @@
+{
+    "6580111328": {
+        "status": "passenger",
+        "first_name": "Мустафохон"
+    },
+    "1241019542": {
+        "status": "passenger"
+    },
+    "6534449376": {
+        "status": "passenger"
+    },
+    "7233540342": {
+        "status": "driver",
+        "first_name": "Осиёхон"
+    },
+    "209550763": {
+        "status": "driver"
+    },
+    "6655826848": {
+        "status": "driver"
+    },
+    "517984311": {
+        "status": "driver"
+    },
+    "1124112611": {
+        "status": "driver"
+    },
+    "550615457": {
+        "status": "driver"
+    },
+    "5617902876": {
+        "status": "driver"
+    }
+}
