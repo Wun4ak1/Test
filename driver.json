@@ -44,7 +44,12 @@
             "seat_count": "4"
         },
         "rating": 0,
-        "approved": true
+        "approved": true,
+        "order": {
+            "status": "draft",
+            "available_seats": 4,
+            "to_region": "Тошкент ш."
+        }
     },
     "517984311": {
         "id": "517984311",

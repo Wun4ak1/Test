@@ -39,7 +39,7 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
         ])
 
     # Агар фойдаланувчи админ бўлса, "Админ" тугмасини қўшамиз
-    if user_id in ADMINS:
+    if str(user_id) in ADMINS:
         keyboard.inline_keyboard.append([InlineKeyboardButton(text="Сатусни алмаштириш", callback_data="change_user_status")])
         keyboard.inline_keyboard.append([InlineKeyboardButton(text="🛠️ Админ", callback_data="admin")])
 

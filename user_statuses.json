@@ -14,7 +14,8 @@
         "first_name": "Осиёхон"
     },
     "209550763": {
-        "status": "driver"
+        "status": "driver",
+        "first_name": "ᅠ"
     },
     "6655826848": {
         "status": "driver"
@@ -29,6 +30,11 @@
         "status": "driver"
     },
     "5617902876": {
-        "status": "driver"
+        "status": "driver",
+        "first_name": "Karimov Baxtiyor"
+    },
+    "7874183205": {
+        "status": "new_user",
+        "first_name": "Ариф"
     }
 }
