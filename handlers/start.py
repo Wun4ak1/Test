@@ -1146,5 +1146,3 @@ async def send_json_files(message):
     except Exception as e:
         logging.error(f"Файлларни юклашда хатолик: {e}")
         await message.answer("Файлларни юклашда хатолик юз берди.")
-қ
-
