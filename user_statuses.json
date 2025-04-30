@@ -1,8 +1,4 @@
 {
-    "6580111328": {
-        "status": "passenger",
-        "first_name": "Мустафохон"
-    },
     "1241019542": {
         "status": "passenger"
     },
@@ -11,7 +7,10 @@
     },
     "7233540342": {
         "status": "driver",
-        "first_name": "Осиёхон"
+        "first_name": "Осиёхон",
+        "invited_users": [
+            "6580111328"
+        ]
     },
     "209550763": {
         "status": "driver",
@@ -36,5 +35,18 @@
     "7874183205": {
         "status": "new_user",
         "first_name": "Ариф"
+    },
+    "6965321687": {
+        "status": "driver",
+        "first_name": "Samandar"
+    },
+    "5995723669": {
+        "status": "passenger",
+        "first_name": "AJ"
+    },
+    "6580111328": {
+        "status": "new_user",
+        "referrer": "7233540342",
+        "first_name": "Мустафохон"
     }
 }

@@ -1117,7 +1117,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         await callback_query.message.answer("🏠 Бош меню:", reply_markup=start_kb(user_id))
 
     elif data == "admin":
-        if user_id not in ADMINS:
+        if str(user_id) not in ADMINS:
             return
 
         # Инлайн клавиатура тузиш
@@ -1144,7 +1144,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 @router.message(Command("admin"))
 async def admin_command(message: Message, state: FSMContext, bot: Bot):
     user_id = message.from_user.id
-    if user_id not in ADMINS:
+    if str(user_id) not in ADMINS:
             return
     await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 

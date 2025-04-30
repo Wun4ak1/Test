@@ -665,7 +665,7 @@ async def handle_custom_date(message: Message, state: FSMContext):
         now = datetime.now()
 
         if selected_date.date() < now.date():
-            await message.answer("⛔ Бу сана ўтган. Илтимос, келгуси санани киритинг. (Йил-Ой-Кун форматида, масалан: 2025-04-16)")
+            await message.answer("⛔ Бу сана ўтган. Илтимос, келгуси санани киритинг. (Йил-Ой-Кун форматида, масалан: 2025-04-30)")
             return
 
         formatted_day = selected_date.strftime("%Y-%m-%d")
@@ -722,7 +722,7 @@ async def handle_custom_date(message: Message, state: FSMContext):
         await message.answer("🕰 Қайси вақтда йўлга чиқасиз?", reply_markup=markup)
 
     except ValueError:
-        await message.answer("❌ Нотўғри формат. Илтимос, санани Йил-Ой-Кун кўринишида киритинг. (масалан: 2025-04-16)")
+        await message.answer("❌ Нотўғри формат. Илтимос, санани Йил-Ой-Кун кўринишида киритинг. (масалан: 2025-04-30)")
 
 @router.callback_query(lambda c: "_day_" in c.data)
 async def choose_time_slot(callback_query: CallbackQuery, state: FSMContext):
@@ -741,7 +741,7 @@ async def choose_time_slot(callback_query: CallbackQuery, state: FSMContext):
         selected_date = now.date() + timedelta(days=1)
     else:
         await callback_query.message.answer(
-            "📅 Илтимос, сана киритинг (Йил-Ой-Кун форматда, масалан: 2025-04-20):"
+            "📅 Илтимос, сана киритинг (Йил-Ой-Кун форматда, масалан: 2025-04-30):"
         )
         await state.update_data(user_type=user_type)
         await state.set_state(OrderState.waiting_for_custom_date)

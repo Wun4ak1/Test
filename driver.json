@@ -18,7 +18,7 @@
             "to_district": "Шайхонтоҳур",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-04-26",
+            "date": "2025-04-30",
             "time": "16:00 - 19:59",
             "order_number": 2,
             "status_timestamps": {
@@ -83,7 +83,7 @@
             "to_district": "Ангрен",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-04-27",
+            "date": "2025-04-30",
             "time": "16:00 - 19:59",
             "order_number": 1,
             "status_timestamps": {
@@ -110,7 +110,7 @@
             "to_district": "Юнусобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-04-26",
+            "date": "2025-04-30",
             "time": "06:00 - 11:59",
             "order_number": 1,
             "status_timestamps": {
@@ -150,8 +150,8 @@
             "to_district": "Яшнобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-04-27",
-            "time": "06:00 - 11:59",
+            "date": "2025-04-29",
+            "time": "16:00 - 19:59",
             "order_number": 1,
             "status_timestamps": {
                 "created": "2025-04-26 22:09:41"
