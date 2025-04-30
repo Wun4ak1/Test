@@ -1123,21 +1123,20 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 #    await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 #    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
-
-from aiogram.types import InputFile
+from aiogram.types.input_file import FSInputFile
 
 async def send_json_files(message):
     try:
         # Фойдаланувчиларни `.json` файлидан юклаш
-        file = InputFile(USER_STATUS_PATH)
+        file = FSInputFile(USER_STATUS_PATH)
         await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
 
         # Ҳайдовчиларни `.json` файлидан юклаш
-        file = InputFile(DRIVER_PATH)
+        file = FSInputFile(DRIVER_PATH)
         await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
 
         # Пасажирлар рўйхати
-        file = InputFile(PASSENGER_PATH)
+        file = FSInputFile(PASSENGER_PATH)
         await message.answer_document(file, caption="Пасажирлар рўйхати")
 
     except Exception as e:

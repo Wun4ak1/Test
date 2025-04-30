@@ -1,4 +1,6 @@
 # handlers/utils.py
+import sys
+import os
 import json
 from aiogram import Bot, types
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
@@ -6,19 +8,22 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, time as dtime
 import logging
-import os
 from config import TOKEN
+# 'handlers' папкасини Python импорт маршрутига қўшиш
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from location import calculate_price
 
 # Ботни яратиш
 bot = Bot(token=TOKEN)
 
 # Лойиҳа папкасининг йўлини олиш
-project_dir = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+data_dir = os.path.join(project_dir, 'data')
 
-USER_STATUS_PATH = os.path.join(project_dir, '..', 'user_statuses.json')
-PASSENGER_PATH = os.path.join(project_dir, '..', 'passenger.json')
-DRIVER_PATH = os.path.join(project_dir, '..', 'driver.json')
+# JSON файллар йўллари
+USER_STATUS_PATH = os.path.join(data_dir, 'user_statuses.json')
+PASSENGER_PATH = os.path.join(data_dir, 'passenger.json')
+DRIVER_PATH = os.path.join(data_dir, 'driver.json')
 
 #logging.basicConfig(level=logging.INFO, filename="bot.log", filemode="a", format="%(asctime)s - %(levelname)s - %(message)s")
 logging.basicConfig(level=logging.INFO)
@@ -80,6 +85,16 @@ def save_json(file_path, data):
             json.dump(data, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"❗ JSON файлни сақлашда хатолик: {e}")
+
+# Файл мавжудлигини текшириш ва яратиш
+def ensure_json_files_exist():
+    os.makedirs(data_dir, exist_ok=True)
+    for path in [USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH]:
+        if not os.path.exists(path):
+            logging.warning(f"Файл топилмади, яратиляпти: {path}")
+            save_json(path, {})
+        else:
+            logging.info(f"Файл мавжуд: {path}")
 
 # === passenger drivers MA'LUMOTLAR ===
 # ✅ 4. utils.py — load/save функциялар
