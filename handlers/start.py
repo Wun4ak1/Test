@@ -1099,7 +1099,8 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         ])
 
         #await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
-        await callback_query.message.edit_text(f"👮 Админ панел!*", reply_markup=keyboard, parse_mode="Markdown")
+        await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
+
     
     elif data == "upload_files":  # Агар "Файлларни юклаш" тугмаси босилса
         await send_json_files(callback_query.message)
@@ -1120,28 +1121,30 @@ async def admin_command(message: Message, state: FSMContext, bot: Bot):
     if str(user_id) not in ADMINS:
             return
     await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
+    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
+
 
 from aiogram.types import InputFile
-import logging
 
 async def send_json_files(message):
     try:
         # Фойдаланувчиларни `.json` файлидан юклаш
         with open(USER_STATUS_PATH, "rb") as f:
-            file = InputFile(f, filename="user_statuses.json")
+            file = InputFile(f.read(), filename="user_statuses.json")  # read() билан файлни очиш
             await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
 
         # Ҳайдовчиларни `.json` файлидан юклаш
         with open(DRIVER_PATH, "rb") as f:
-            file = InputFile(f, filename="driver.json")
+            file = InputFile(f.read(), filename="driver.json")
             await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
 
         # Пасажирлар рўйхати
         with open(PASSENGER_PATH, "rb") as f:
-            file = InputFile(f, filename="passenger.json")
+            file = InputFile(f.read(), filename="passenger.json")
             await message.answer_document(file, caption="Пасажирлар рўйхати")
 
     except Exception as e:
         logging.error(f"Файлларни юклашда хатолик: {e}")
         await message.answer("Файлларни юклашда хатолик юз берди.")
+қ
 
