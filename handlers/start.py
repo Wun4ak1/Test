@@ -16,9 +16,10 @@ from config import ADMINS, TOKEN
 from states import DriverInfo, AdminStates
 from keyboards.start_kb import start_kb
 from utils import (
-    load_json, save_json, load_users, save_users, get_user_status, save_user_status, notify_driver_and_passenger, recommend_multiple_drivers_to_passenger,
+    load_json, save_json, load_users, save_user_status, recommend_multiple_drivers_to_passenger,
     get_passenger_order, send_or_edit_last, load_passenger, get_driver_order, save_passenger_order, send_or_edit_text,
-    load_drivers, save_driver, is_driver_approved, update_driver_seats, create_departure_confirmation_keyboard, USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
+    load_drivers, save_driver, is_driver_approved, create_departure_confirmation_keyboard,
+    USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
 )
 
 bot = Bot(token=TOKEN)
@@ -1077,7 +1078,7 @@ async def show_drivers_list(callback_query: CallbackQuery):
 
 @router.callback_query(lambda c: c.data in [
     "orders", "driver", "passenger", "change_user_status", "choose_role",
-    "admin"
+    "admin", "upload_files"
 ] or c.data.endswith("_dan"))
 async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
@@ -1125,11 +1126,13 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
             [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
+            [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
 
         await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
-        # Бу ерда Жами буюртмаларни кўрсатиш ёки бошқа админ функциялари бўлиши мумкин
-        # elif data == "all_orders":
+    
+    elif data == "upload_files":  # Агар "Файлларни юклаш" тугмаси босилса
+        await send_json_files(callback_query.message)
 
     else:
         logging.warning(f"handlers/start.py Номаълум callback data: {data}")
@@ -1148,3 +1151,22 @@ async def admin_command(message: Message, state: FSMContext, bot: Bot):
             return
     await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 
+from aiogram.types import InputFile
+
+async def send_json_files(message):
+    try:
+        # Фойдаланувчиларни `.json` файлидан юклаш
+        file = InputFile(USER_STATUS_PATH)
+        await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
+
+        # Ҳайдовчиларни `.json` файлидан юклаш
+        file = InputFile(DRIVER_PATH)
+        await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
+
+        # Пасажирлар рўйхати
+        file = InputFile(PASSENGER_PATH)
+        await message.answer_document(file, caption="Пасажирлар рўйхати")
+
+    except Exception as e:
+        logging.error(f"Файлларни юклашда хатолик: {e}")
+        await message.answer("Файлларни юклашда хатолик юз берди.")
