@@ -724,37 +724,6 @@ async def process_feedback(callback_query: CallbackQuery):
 
     await send_or_edit_text(callback_query, "✅ Баҳо учун раҳмат! Буюртмангиз ёпилди ва тарихга ўтказилди.")
 
-#@router.message(Command("start"))
-#async def start_command(message: Message, state: FSMContext, bot: Bot):
-#    user_id = message.from_user.id
-#    logging.info(f"Фойдаланувчи ID: {user_id}")
-#    
-#    # Фойдаланувчи статусини оламиз
-#    user_status = get_user_status(user_id)
-#    logging.info(f"Фойдаланувчининг статуси: {user_status}")
-#
-#    # Агар фойдаланувчи Биринчи марта кирди — танлов юборилади
-#    if user_status == "new_user": # user_status is None or 
-#        text = "🤖 Ботга хуш келибсиз!\nКимлигингизни танланг:"
-#        await send_or_edit_last(user_id, state, bot, text, start_kb(user_id))
-#
-#    else:
-#        if user_status == "driver":
-#            if is_driver_approved(user_id):
-#                # ✅ Тасдиқланган ҳайдовчи менюси
-#                await message.answer("🚘 Ҳайдовчи учун меню:", reply_markup=start_kb(user_id))
-#            else:
-#                text_driver = "Йўловчи буюртмаларини кўриш учун маълумотларингизни юборинг!"
-#                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-#                    [InlineKeyboardButton(text="🧾 Маълумот юбориш", callback_data="haydovchi")],
-#                    [InlineKeyboardButton(text="Маълумот ҳолати", callback_data="is_driver_approved_check")]
-#                ])
-#                await message.answer(text_driver, reply_markup=keyboard)
-#
-#        elif user_status == "passenger":
-#            text = "🏠 Бош меню:"
-#            await message.answer(text, reply_markup=start_kb(user_id))
-
 from aiogram.filters import CommandStart, CommandObject
 
 @router.message(CommandStart(deep_link=True))
@@ -1129,7 +1098,8 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
 
-        await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
+        #await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
+        await callback_query.message.edit_text(f"👮 Админ панел!*", reply_markup=keyboard, parse_mode="Markdown")
     
     elif data == "upload_files":  # Агар "Файлларни юклаш" тугмаси босилса
         await send_json_files(callback_query.message)
