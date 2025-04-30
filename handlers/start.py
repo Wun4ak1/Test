@@ -878,7 +878,7 @@ async def show_my_stats(callback_query: types.CallbackQuery):
 @router.callback_query(lambda c: c.data == "approve_panel")
 async def open_admin_panel(callback_query: CallbackQuery):
     user_id = int(callback_query.from_user.id)
-    if user_id not in ADMINS:
+    if str(user_id) not in ADMINS:
         await callback_query.message.answer("🚫 Сизда рухсат йўқ.")
         return
 
