@@ -1152,21 +1152,26 @@ async def admin_command(message: Message, state: FSMContext, bot: Bot):
     await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 
 from aiogram.types import InputFile
+import logging
 
 async def send_json_files(message):
     try:
         # Фойдаланувчиларни `.json` файлидан юклаш
-        file = InputFile(USER_STATUS_PATH)
-        await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
+        with open(USER_STATUS_PATH, "rb") as f:
+            file = InputFile(f, filename="user_statuses.json")
+            await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
 
         # Ҳайдовчиларни `.json` файлидан юклаш
-        file = InputFile(DRIVER_PATH)
-        await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
+        with open(DRIVER_PATH, "rb") as f:
+            file = InputFile(f, filename="driver.json")
+            await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
 
         # Пасажирлар рўйхати
-        file = InputFile(PASSENGER_PATH)
-        await message.answer_document(file, caption="Пасажирлар рўйхати")
+        with open(PASSENGER_PATH, "rb") as f:
+            file = InputFile(f, filename="passenger.json")
+            await message.answer_document(file, caption="Пасажирлар рўйхати")
 
     except Exception as e:
         logging.error(f"Файлларни юклашда хатолик: {e}")
         await message.answer("Файлларни юклашда хатолик юз берди.")
+
