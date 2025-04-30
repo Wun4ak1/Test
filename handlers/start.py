@@ -1115,13 +1115,13 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
     except TelegramBadRequest:
         pass  # "Message is not modified" ёки шунга ўхшаш хато чиқса, бекор қилинади
 
-@router.message(Command("admin"))
-async def admin_command(message: Message, state: FSMContext, bot: Bot):
-    user_id = message.from_user.id
-    if str(user_id) not in ADMINS:
-            return
-    await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
-    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
+#@router.message(Command("admin"))
+#async def admin_command(message: Message, state: FSMContext, bot: Bot):
+#    user_id = message.from_user.id
+#    if str(user_id) not in ADMINS:
+#            return
+#    await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
+#    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
 
 from aiogram.types import InputFile
@@ -1129,19 +1129,16 @@ from aiogram.types import InputFile
 async def send_json_files(message):
     try:
         # Фойдаланувчиларни `.json` файлидан юклаш
-        with open(USER_STATUS_PATH, "rb") as f:
-            file = InputFile(f.read(), filename="user_statuses.json")  # read() билан файлни очиш
-            await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
+        file = InputFile(USER_STATUS_PATH)
+        await message.answer_document(file, caption="Фойдаланувчилар рўйхати")
 
         # Ҳайдовчиларни `.json` файлидан юклаш
-        with open(DRIVER_PATH, "rb") as f:
-            file = InputFile(f.read(), filename="driver.json")
-            await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
+        file = InputFile(DRIVER_PATH)
+        await message.answer_document(file, caption="Ҳайдовчилар рўйхати")
 
         # Пасажирлар рўйхати
-        with open(PASSENGER_PATH, "rb") as f:
-            file = InputFile(f.read(), filename="passenger.json")
-            await message.answer_document(file, caption="Пасажирлар рўйхати")
+        file = InputFile(PASSENGER_PATH)
+        await message.answer_document(file, caption="Пасажирлар рўйхати")
 
     except Exception as e:
         logging.error(f"Файлларни юклашда хатолик: {e}")
