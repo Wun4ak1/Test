@@ -238,35 +238,39 @@ TIME_SLOTS = {
     "night": ("🌃 Кечаси (20:00–00:00)", "20:00 - 23:59"),
     "late_night": ("🌙 Тун (00:00–06:00)", "00:00 - 05:59")
 }
-def create_time_keyboard(curr,u,edit=False):
-    pref=f"{u[0]}_{'et' if edit else 't'}"
+def create_time_keyboard(curr, u, edit=False):
+    pref = f"{u[0]}_{'et' if edit else 't'}"
     btns = []
 
     selected_date = curr.get("date")
     is_today = selected_date == datetime.now().strftime("%Y-%m-%d")
-    now_hour = datetime.now().hour
+    now = datetime.now()
+    now_time = now.time()
 
     for key, (label, time_range) in TIME_SLOTS.items():
         start_str, end_str = time_range.split(" - ")
-        start_hour = int(start_str.split(":")[0])
-        end_hour = int(end_str.split(":")[0])
+        start_time = datetime.strptime(start_str, "%H:%M").time()
+        end_time = datetime.strptime(end_str, "%H:%M").time()
 
         # ⏳ Агар диапазон тўлиқ ўтган бўлса, кўрсатмаймиз
-        if is_today and end_hour <= now_hour:
+        if is_today and end_time <= now_time:
             continue
 
-        count = count_orders_time(u, curr, time_range)
-        btns.append([
-            InlineKeyboardButton(
-                text = f"{label} ({count})" if count > 0 else label,
-                callback_data = cb(pref, key)
-            )
-        ])
+        # 🌟 Интерфейс учун вақтни янгилаймиз
+        if is_today and start_time < now_time < end_time:
+            shown_range = f"{now.strftime('%H:%M')}–{end_str}"
+        else:
+            shown_range = f"{start_str}–{end_str}"
 
-#    btns=[[InlineKeyboardButton(
-#             text = f"{lbl} ({count_orders_time(u,curr,rng)})",
-#             callback_data=cb(pref,key)
-#         )] for key,(lbl,rng) in TIME_SLOTS.items()]
+        # 🌅 Эрталаб → 🌅 Эрталаб (14:32–15:59)
+        new_label = f"{label.split('(')[0]}({shown_range})"
+
+        count = count_orders_time(u, curr, time_range)
+        btns.append([InlineKeyboardButton(
+            text=f"{new_label} ({count})" if count > 0 else new_label,
+            callback_data=cb(pref, key)
+        )])
+
     return InlineKeyboardMarkup(inline_keyboard=btns)
 
 def create_exact_time_keyboard(user_type, current_order, orders, is_editing: bool = False) -> InlineKeyboardMarkup:

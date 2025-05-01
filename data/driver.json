@@ -11,26 +11,43 @@
         },
         "rating": 1.0,
         "approved": true,
+        "order_history": [
+            {
+                "status": "cancelled",
+                "available_seats": 3,
+                "to_region": "Тошкент ш.",
+                "to_district": "Шайхонтоҳур",
+                "from_region": "Наманган",
+                "from_district": "Косонсой",
+                "date": "2025-04-30",
+                "time": "16:00 - 19:59",
+                "order_number": 2,
+                "status_timestamps": {
+                    "created": "2025-04-26 17:06:34",
+                    "on_the_way": "2025-04-26 18:25:15"
+                },
+                "accepted_passengers": [
+                    {
+                        "passenger_id": "6580111328",
+                        "price": 140000
+                    }
+                ],
+                "cancelled_at": "2025-05-01 04:52:53"
+            }
+        ],
         "order": {
-            "status": "on_the_way",
-            "available_seats": 3,
+            "status": "new",
+            "available_seats": 4,
             "to_region": "Тошкент ш.",
-            "to_district": "Шайхонтоҳур",
+            "to_district": "Олмазор",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-04-30",
-            "time": "16:00 - 19:59",
+            "date": "2025-05-01",
+            "time": "12:00 - 15:59",
             "order_number": 2,
             "status_timestamps": {
-                "created": "2025-04-26 17:06:34",
-                "on_the_way": "2025-04-26 18:25:15"
-            },
-            "accepted_passengers": [
-                {
-                    "passenger_id": "6580111328",
-                    "price": 140000
-                }
-            ]
+                "created": "2025-05-01 04:53:43"
+            }
         }
     },
     "209550763": {
@@ -48,7 +65,11 @@
         "order": {
             "status": "draft",
             "available_seats": 4,
-            "to_region": "Тошкент ш."
+            "to_region": "Тошкент в.",
+            "to_district": "Ангрен",
+            "from_region": "Тошкент в.",
+            "from_district": "Ангрен",
+            "date": "2025-05-01"
         }
     },
     "517984311": {
