@@ -109,5 +109,17 @@
   "6566757669": {
     "status": "passenger",
     "first_name": "Dilorom"
+  },
+  "5669207220": {
+    "status": "new_user",
+    "first_name": "Мархабохон."
+  },
+  "5774076129": {
+    "status": "driver",
+    "first_name": "Jakbarov Yahyomirzo"
+  },
+  "1824741812": {
+    "status": "passenger",
+    "first_name": "Хасанхон"
   }
 }

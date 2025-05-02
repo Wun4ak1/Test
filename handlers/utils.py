@@ -338,8 +338,13 @@ async def save_order(user_id, user_type, bot):
             passenger_order = p_data.get("order", {})
             if not passenger_order:
                 continue
+
+            # ✅ САҚЛАШ: Фақат "new" статусдаги буюртмаларни текшириш
+            if passenger_order.get("status") != "new":
+                continue
+
             # Мослаш ва статус текшириш
-            if is_match(new_order, passenger_order) and p_data.get("status") != "arrived":
+            if is_match(new_order, passenger_order): # and p_data.get("status") != "arrived":
                 await recommend_multiple_drivers_to_passenger(
                     passenger_id=p_id,
                     user_order=passenger_order,

@@ -300,7 +300,7 @@ async def edit_date(cb: CallbackQuery, state: FSMContext):
 
     # «custom» бўлса – қўлдан сана киритиш
     if day_key == "custom":
-        await cb.message.answer("📅 Сана киритинг (Йил-Ой-Кун, масалан: 2025-04-30):")
+        await cb.message.answer("📅 Сана киритинг (Йил-Ой-Кун, масалан: 2025-05-30):")
         await state.update_data(user_type=user_type)
         await state.set_state(EditOrder.waiting_for_custom_date)
         await cb.answer(); return
@@ -379,7 +379,7 @@ async def save_custom_date(msg: Message, state: FSMContext):
     try:
         sel_date = datetime.strptime(msg.text.strip(), "%Y-%m-%d").date()
     except ValueError:
-        await msg.answer("❌ Формат нотўғри. Йил-Ой-Кун тарзда киритинг, масалан 2025-04-30.")
+        await msg.answer("❌ Формат нотўғри. Йил-Ой-Кун тарзда киритинг, масалан 2025-05-30.")
         return
 
     data = await state.get_data()

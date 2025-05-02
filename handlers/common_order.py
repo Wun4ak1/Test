@@ -58,6 +58,131 @@ def cb(p, *parts): return f"{p}_{'_'.join(parts)}"
 # etr/efd   = edit_to_region / edit_from_district ва ҳ.к.
 # tr/td/fr/fd = to_region, to_district, from_region, from_district
 # -----------------------------------------------
+@router.callback_query(F.data == "go_back_step")
+async def go_back_step(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    user_id = callback_query.from_user.id
+    user_type = data.get("user_type", "driver")  # default to driver
+
+    # ❓ Қайси босқичдамиз
+    if "to_district" in data:
+        # Тумандан → Вилоятга
+        region = data["to_region"]
+        reply_markup = create_to_district_keyboard(user_type, region)
+        await send_or_edit_text(
+            callback_query.message,
+            f"📍 Йўналиш: *{region}*\n\n📍 *Қайси ТУМАНГА борасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(to_district=None)  # орқага қайтганда ўчириб қўямиз
+
+    elif "to_region" in data:
+        # Вилоятдан → бошланғичга
+        reply_markup = create_to_region_keyboard(user_type)
+        await send_or_edit_text(
+            callback_query.message,
+            "📍 *Қайси ҲУДУДГА борасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(to_region=None)
+
+    elif "from_district" in data:
+        from_region = data.get("from_region")
+        to_r = data.get("to_region")
+        to_d = data.get("to_district")
+        reply_markup = create_from_district_keyboard(user_type, to_r, to_d, from_region)
+        await send_or_edit_text(
+            callback_query.message,
+            f"📍 Йўналиш: {to_r} / {to_d}\n📍 Қайси МАҲАЛЛАДАН кетасиз?",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(from_district=None)
+
+    elif "from_region" in data:
+        to_r = data.get("to_region")
+        to_d = data.get("to_district")
+        reply_markup = create_from_region_keyboard(user_type, to_r, to_d)
+        await send_or_edit_text(
+            callback_query.message,
+            f"📍 Йўналиш: {to_r} / {to_d}\n📍 *Қайси ВИЛОЯТДАН кетасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(from_region=None)
+
+    elif "date" in data:
+        to_r = data.get("to_region")
+        to_d = data.get("to_district")
+        from_r = data.get("from_region")
+        from_d = data.get("from_district")
+        reply_markup = create_day_keyboard(user_type, to_r, to_d, from_r, from_d)
+        await send_or_edit_text(
+            callback_query.message,
+            "📅 *Қайси кунга кетасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(date=None)
+
+    elif "time" in data:
+        reply_markup = create_time_keyboard(data, user_type)
+        await send_or_edit_text(
+            callback_query.message,
+            "⏰ *Қайси вақт оралиғида кетасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        await state.update_data(time=None)
+
+    else:
+        # Бошқа ҳолат: бошидан бошлаймиз
+        reply_markup = create_to_region_keyboard(user_type)
+        await send_or_edit_text(
+            callback_query.message,
+            "📍 *Қайси ҲУДУДГА борасиз?*",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+
+@router.callback_query(lambda c: c.data == "BACK_TO_PREV")
+async def go_back_step(callback_query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    prev_step = data.get("prev_step")
+    user_type = data.get("user_type")
+    user_id = callback_query.from_user.id
+
+    if prev_step == "choose_to_region":
+        reply_markup = create_to_region_keyboard(user_type)
+        await state.update_data(prev_step=None)  # энди бошланғич ҳолат
+        await send_or_edit_text(callback_query.message,
+                                "📍 *Қайси ҲУДУДГА борасиз?*",
+                                reply_markup=reply_markup,
+                                parse_mode="Markdown")
+
+    elif prev_step == "choose_to_district":
+        region = data.get("to_region")
+        reply_markup = create_to_district_keyboard(user_type, region)
+        await state.update_data(prev_step="choose_to_region")
+        await send_or_edit_text(callback_query.message,
+                                f"📍 Йўналиш: *{region}*\n\n📍 *Қайси ТУМАНГА борасиз?*",
+                                reply_markup=reply_markup,
+                                parse_mode="Markdown")
+
+    elif prev_step == "choose_from_region":
+        to_region = data.get("to_region")
+        to_district = data.get("to_district")
+        reply_markup = create_from_region_keyboard(user_type, to_region, to_district)
+        await state.update_data(prev_step="choose_to_district")
+        await send_or_edit_text(callback_query.message,
+                                f"📍 Йўналиш: {to_region} / *{to_district}*\n\n📍 *Қайси ВИЛОЯТДАН кетасиз?*",
+                                reply_markup=reply_markup,
+                                parse_mode="Markdown")
+
+    else:
+        await callback_query.answer("🔙 Орқага қайтиш мумкин эмас.", show_alert=True)
 
 # 1. ▼ TO REGION
 def create_to_region_keyboard(u, edit=False):
@@ -67,7 +192,11 @@ def create_to_region_keyboard(u, edit=False):
               text = f"{r} ({cnt.get(r,0)})" if cnt.get(r,0) else f"{r}",
               callback_data=cb(pref, REGION_TO_SLUG[r])
            ) for r in REGIONS_AND_DISTRICTS]
-    return InlineKeyboardMarkup(inline_keyboard=[btns[i:i+3] for i in range(0,len(btns),3)])
+    
+    rows = [btns[i:i+3] for i in range(0, len(btns), 3)]
+#    if not edit:
+#        rows.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 # 1. count_orders_to_region
 def count_orders_to_region(user_type: str, direction: str):
@@ -91,8 +220,11 @@ def create_to_district_keyboard(u, region, edit=False):
             text = f"{d} ({cnt.get(f'{region}_{d}',0)})" if cnt.get(f'{region}_{d}',0) else f"{d}",
             callback_data=cb(pref, DISTRICT_TO_SLUG[(region,d)])
          ) for d in REGIONS_AND_DISTRICTS[region]]
-    return InlineKeyboardMarkup(inline_keyboard=[btns[i:i+3] for i in range(0,len(btns),3)])
 
+    rows = [btns[i:i+3] for i in range(0, len(btns), 3)]
+    if not edit:
+        rows.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 # 2. count_orders_to_district
 def count_orders_to_district(user_type: str, direction: str, to_region: str):
@@ -121,7 +253,11 @@ def create_from_region_keyboard(u, to_r, to_d, edit=False):
             text = f"{r} ({cnt.get(r,0)})" if cnt.get(r,0) else f"{r}",
             callback_data=cb(pref, REGION_TO_SLUG[r])
          ) for r in REGIONS_AND_DISTRICTS]
-    return InlineKeyboardMarkup(inline_keyboard=[btns[i:i+3] for i in range(0,len(btns),3)])
+
+    rows = [btns[i:i+3] for i in range(0, len(btns), 3)]
+    if not edit:
+        rows.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 # 3. count_orders_from_region
 def count_orders_from_region(user_type: str, to_region: str, to_district: str):
@@ -152,9 +288,12 @@ def create_from_district_keyboard(u, to_r, to_d, from_r, edit=False):
     btns=[InlineKeyboardButton(
             text = f"{d} ({cnt.get(f'{from_r}_{d}',0)})" if cnt.get(f'{from_r}_{d}',0) else f"{d}",
             callback_data=cb(pref, DISTRICT_TO_SLUG[(from_r,d)])
-         ) for d in REGIONS_AND_DISTRICTS[from_r]]
-    return InlineKeyboardMarkup(inline_keyboard=[btns[i:i+3] for i in range(0,len(btns),3)])
+        ) for d in REGIONS_AND_DISTRICTS[from_r]]
 
+    rows = [btns[i:i+3] for i in range(0, len(btns), 3)]
+    if not edit:
+        rows.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 # 4. count_orders_from_district
 def count_orders_from_district(
@@ -192,7 +331,10 @@ def create_day_keyboard(u,to_r,to_d,from_r,from_d,edit=False):
     kb=[[InlineKeyboardButton(
             text = f"{l} ({cnt.get(k,0)})" if cnt.get(k,0) else f"{l}", # else f"▫️ {l}",
             callback_data=cb(pref,k)
-        )] for l,k in days.items()]
+       )] for l, k in days.items()]
+
+#    if not edit:
+#        kb.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 # 5. count_orders_date
@@ -271,6 +413,8 @@ def create_time_keyboard(curr, u, edit=False):
             callback_data=cb(pref, key)
         )])
 
+#    if not edit:
+#        btns.append([InlineKeyboardButton(text="🔙 Орқага", callback_data="BACK_TO_PREV")])
     return InlineKeyboardMarkup(inline_keyboard=btns)
 
 def create_exact_time_keyboard(user_type, current_order, orders, is_editing: bool = False) -> InlineKeyboardMarkup:
@@ -503,7 +647,7 @@ async def choose_to_region(callback_query: CallbackQuery, state: FSMContext):
     if await check_existing_order(callback_query, user_id, user_type):
         return
 
-    await state.update_data(user_type=user_type)
+    await state.update_data(user_type=user_type, prev_step=None)
 
     # 🟡 Бошланғич order объектини яратиш
     if user_type == "driver":
@@ -530,7 +674,7 @@ async def choose_to_district(callback_query: CallbackQuery, state: FSMContext):
     if await check_existing_order(callback_query, user_id, user_type):
         return
 
-    await state.update_data(to_region=region)
+    await state.update_data(to_region=region, prev_step="choose_to_region")
 
     if user_type == "driver":
         save_driver_order(user_id, {"to_region": region})
@@ -552,7 +696,7 @@ async def choose_from_region(cb: CallbackQuery, state: FSMContext):
     district = SLUG_TO_DISTRICT[dslug]
     region   = (await state.get_data()).get("to_region")
 
-    await state.update_data(to_district=district)
+    await state.update_data(to_district=district, prev_step="choose_to_district")
 
     user_id = cb.from_user.id
     if await check_existing_order(cb, user_id, user_type):
@@ -669,7 +813,7 @@ async def handle_custom_date(message: Message, state: FSMContext):
         now = datetime.now()
 
         if selected_date.date() < now.date():
-            await message.answer("⛔ Бу сана ўтган. Илтимос, келгуси санани киритинг. (Йил-Ой-Кун форматида, масалан: 2025-04-30)")
+            await message.answer("⛔ Бу сана ўтган. Илтимос, келгуси санани киритинг. (Йил-Ой-Кун форматида, масалан: 2025-05-30)")
             return
 
         formatted_day = selected_date.strftime("%Y-%m-%d")
@@ -726,7 +870,7 @@ async def handle_custom_date(message: Message, state: FSMContext):
         await message.answer("🕰 Қайси вақтда йўлга чиқасиз?", reply_markup=markup)
 
     except ValueError:
-        await message.answer("❌ Нотўғри формат. Илтимос, санани Йил-Ой-Кун кўринишида киритинг. (масалан: 2025-04-30)")
+        await message.answer("❌ Нотўғри формат. Илтимос, санани Йил-Ой-Кун кўринишида киритинг. (масалан: 2025-05-30)")
 
 @router.callback_query(lambda c: "_day_" in c.data)
 async def choose_time_slot(callback_query: CallbackQuery, state: FSMContext):
@@ -744,8 +888,9 @@ async def choose_time_slot(callback_query: CallbackQuery, state: FSMContext):
     elif day_key == "tomorrow":
         selected_date = now.date() + timedelta(days=1)
     else:
+        example_date = (datetime.now().date() + timedelta(days=5)).strftime("%Y-%m-%d")
         await callback_query.message.answer(
-            "📅 Илтимос, сана киритинг (Йил-Ой-Кун форматда, масалан: 2025-04-30):"
+            f"📅 Илтимос, сана киритинг (Йил-Ой-Кун форматда, масалан: {example_date}):"
         )
         await state.update_data(user_type=user_type)
         await state.set_state(OrderState.waiting_for_custom_date)

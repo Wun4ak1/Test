@@ -780,19 +780,8 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
         text = "🤖 Ботга хуш келибсиз!\nКимлигингизни танланг:"
         await send_or_edit_last(user_id, state, bot, text, start_kb(int(user_id)))
     else:
-        if user_status == "driver":
-            if is_driver_approved(user_id):
-                await message.answer("🚘 Ҳайдовчи учун меню:", reply_markup=start_kb(int(user_id)))
-            else:
-                text_driver = "Йўловчи буюртмаларини кўриш учун маълумотларингизни юборинг!"
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🧾 Маълумот юбориш", callback_data="haydovchi")],
-                    [InlineKeyboardButton(text="Маълумот ҳолати", callback_data="is_driver_approved_check")]
-                ])
-                await message.answer(text_driver, reply_markup=keyboard)
-        elif user_status == "passenger":
-            text = "🏠 Бош меню:"
-            await message.answer(text, reply_markup=start_kb(int(user_id)))
+        text = "🏠 Бош меню:"
+        await message.answer(text, reply_markup=start_kb(int(user_id)))
 
 @router.callback_query(F.data == "invite_friends")
 async def invite_friends_callback(callback_query: types.CallbackQuery, bot: Bot):
@@ -843,12 +832,11 @@ async def show_my_stats(callback_query: types.CallbackQuery):
     await callback_query.message.answer(text)
     await callback_query.answer()
 
-# ✅ 2. /admin буйруғи орқали approval panel очиш
-#@router.callback_query(Text("approve_panel"))
+# ✅ 2. approval panel очиш
 @router.callback_query(lambda c: c.data == "approve_panel")
 async def open_admin_panel(callback_query: CallbackQuery):
     user_id = int(callback_query.from_user.id)
-    if str(user_id) not in ADMINS:
+    if user_id not in ADMINS:
         await callback_query.message.answer("🚫 Сизда рухсат йўқ.")
         return
 
@@ -1006,13 +994,13 @@ async def show_statistics(callback_query: CallbackQuery):
         f"- 🚗 Ҳайдовчилар: {stats['total_drivers']} та\n"
         f"- 🧍‍♂️ Йўловчилар сони: {stats['total_passengers']} та\n"
         f"- ✅ Якунланган буюртмалар: {stats['total_orders'] - stats['active_orders']} та\n"
-        f"- ⏳ Жорий буюртмалар: {stats['active_orders']} та\n"
-        f"- ⭐ Ўртача рейтинг: 4.8\n"      # Агар реал ҳисоб-китоб бўлса, динамик қилиб олиб келиш мумкин
-        f"- 💬 Бугунги feedback'лар: 20 та\n\n"  # Бу ҳам худди шундай
+        f"- ⏳ Жорий буюртмалар: {stats['active_orders']} та\n\n"
+        #f"- ⭐ Ўртача рейтинг: 4.8\n"      # Агар реал ҳисоб-китоб бўлса, динамик қилиб олиб келиш мумкин
+        #f"- 💬 Бугунги feedback'лар: 20 та\n\n"  # Бу ҳам худди шундай
         f"- 📦 Ҳайдовчилар буюртмалар: {stats['total_orders_drivers']}\n"
-        f"- ⏳ Жараёндаги Ҳайдовчи буюртмалари: {stats['active_orders_drivers']}\n\n"
+        f"- ⏳ Жараёнда: {stats['active_orders_drivers']}\n\n"
         f"- 📦 Йўловчилар буюртмалар: {stats['total_orders_passengers']}\n"
-        f"- ⏳ Жараёндаги Йўловчи буюртмалари: {stats['active_orders_passengers']}"
+        f"- ⏳ Жараёнда: {stats['active_orders_passengers']}"
     )
 
     await callback_query.message.answer(text, parse_mode="HTML")
@@ -1046,48 +1034,30 @@ async def show_drivers_list(callback_query: CallbackQuery):
 
 
 @router.callback_query(lambda c: c.data in [
-    "orders", "driver", "passenger", "change_user_status", "choose_role",
+    "driver", "passenger", "change_user_status",
     "admin", "upload_files"
-] or c.data.endswith("_dan"))
+])
 async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
     data = callback_query.data
 
     logging.info(f"Callback data: {data}")  # Debug
 
-    if data == "orders":
-        # Буюртмаларни кўрсатиш
-        await callback_query.message.answer("Буйрутма қўшишни бошлаймиз...")
-        from handlers.order import start_order
-        await start_order(callback_query.message, state)
-
-    elif data == "driver":
+    if data == "driver":
         save_user_status(user_id, "driver")
-
-        # Тасдиқланган ҳайдовчи текширилади
-        if is_driver_approved(user_id):
-            await callback_query.message.edit_text("🚘 Ҳайдовчи учун меню:", reply_markup=start_kb(user_id))
-        else:
-            await callback_query.message.edit_text(
-                "Йўловчи буюртмаларини кўриш учун маълумотларингизни юборинг!",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🧾 Маълумот юбориш", callback_data="haydovchi")],
-                    [InlineKeyboardButton(text="Маълумот ҳолати", callback_data="is_driver_approved_check")]
-                ])
-            )
+        await callback_query.message.edit_text("🚘 Ҳайдовчи учун меню:", reply_markup=start_kb(user_id))
 
     elif data == "passenger":
         save_user_status(user_id, "passenger")
-        await callback_query.message.edit_text(f"🏠 *Бош меню:*", reply_markup=None, parse_mode="Markdown")
-        await callback_query.message.answer("Манзилни танлаш:", reply_markup=start_kb(user_id))
+        await callback_query.message.edit_text("🚘 Йўловчи учун меню:", reply_markup=start_kb(user_id))
 
     elif data == "change_user_status":
-        save_user_status(user_id, "new_user")
-        await callback_query.message.edit_reply_markup(reply_markup=None)
-        await callback_query.message.answer("🏠 Бош меню:", reply_markup=start_kb(user_id))
+        save_user_status(user_id, "new_user")  # Статусни "new_user" га қайтарамиз
+        #await callback_query.message.edit_reply_markup(reply_markup=None)  # Эски тугмаларни йўқ қиламиз
+        await callback_query.message.edit_text("📋 Ролни қайта танланг:", reply_markup=start_kb(user_id))
 
     elif data == "admin":
-        if str(user_id) not in ADMINS:
+        if user_id not in ADMINS:
             return
 
         # Инлайн клавиатура тузиш
@@ -1095,6 +1065,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
             [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
+            [InlineKeyboardButton(text="🚘 Ҳайдовчилар рўйхати", callback_data="show_drivers_list")],
             [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
 
