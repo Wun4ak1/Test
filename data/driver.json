@@ -113,11 +113,10 @@
             "name": "Рустамхон",
             "phone": "+998945755500",
             "car_model": "Нексия 2",
-            "car_number": "50А197АА",
+            "car_number": "01A123BC",
             "seat_count": "4"
         },
         "rating": 0,
-        "approved": true,
         "order": {
             "status": "draft",
             "available_seats": 4,
@@ -127,7 +126,8 @@
             "from_district": "Тайлоқ",
             "date": "2025-05-02",
             "time": "12:00 - 15:59"
-        }
+        },
+        "approved": false
     },
     "7233540342": {
         "id": "7233540342",

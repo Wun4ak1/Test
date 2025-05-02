@@ -14,11 +14,11 @@ ADMINS_RAW = os.getenv("ADMINS", "{}")  # 🔁 default: dict кўринишид�
 try:
     parsed = json.loads(ADMINS_RAW)
     if isinstance(parsed, dict):
-        # Railway варианти: {"209550763": true}
-        ADMINS = [int(k) for k in parsed.keys()]
+        # {"209550763": true}
+        ADMINS = list(parsed.keys())  # 👈 always str keys
     elif isinstance(parsed, list):
-        # Локал варианти: [209550763]
-        ADMINS = [int(i) for i in parsed]
+        # [209550763]
+        ADMINS = [str(i) for i in parsed]
     else:
         ADMINS = []
 except (json.JSONDecodeError, ValueError, TypeError):
