@@ -41,6 +41,7 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
 
     # Агар фойдаланувчи админ бўлса, "Админ" тугмасини қўшамиз
     if user_id in ADMINS:
+    #if str(user_id) in ADMINS:
         add_button("🛠️ Админ", "admin")
 
     return keyboard

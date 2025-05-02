@@ -1058,6 +1058,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 
     elif data == "admin":
         if user_id not in ADMINS:
+        #if str(user_id) not in ADMINS:
             return
 
         # Инлайн клавиатура тузиш
