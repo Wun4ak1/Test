@@ -10,10 +10,7 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 ADMINS_RAW = os.getenv("ADMINS", "[]")
 try:
-    # JSON форматдаги рўйхатга айлантирамиз
-    ADMINS = json.loads(ADMINS_RAW)
-    # Ҳаммасини int типга ўтказамиз (ҳар эҳтимолга қарши)
-    ADMINS = [int(admin_id) for admin_id in ADMINS]
+    ADMINS = [int(admin_id) for admin_id in json.loads(ADMINS_RAW)]
 except (json.JSONDecodeError, TypeError, ValueError):
     ADMINS = []
 OTHER_SECRET = os.getenv("OTHER_SECRET")
