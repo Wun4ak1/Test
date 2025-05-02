@@ -1,7 +1,12 @@
 # keyboards/start_kb.py
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from handlers.utils import get_user_status, is_driver_approved
-from config import ADMINS
+import os
+ADMINS = os.getenv("ADMINS")
+if ADMINS:
+    ADMINS = {int(i) for i in ADMINS.split(",")}
+else:
+    ADMINS = set()
 
 def start_kb(user_id: int) -> InlineKeyboardMarkup:
     user_status = get_user_status(user_id)
@@ -40,8 +45,8 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
     add_button("📞 Админга мурожаат", "admin_contact")
 
     # Агар фойдаланувчи админ бўлса, "Админ" тугмасини қўшамиз
-    #if user_id in ADMINS:
-    if str(user_id) in ADMINS:
+    if user_id in ADMINS:
+    #if str(user_id) in ADMINS:
         add_button("🛠️ Админ", "admin")
 
     return keyboard

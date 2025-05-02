@@ -12,7 +12,14 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import ADMINS, TOKEN
+from config import TOKEN
+
+ADMINS = os.getenv("ADMINS")
+if ADMINS:
+    ADMINS = {int(i) for i in ADMINS.split(",")}
+else:
+    ADMINS = set()
+
 from states import DriverInfo, AdminStates
 from keyboards.start_kb import start_kb
 from utils import (
@@ -836,8 +843,8 @@ async def show_my_stats(callback_query: types.CallbackQuery):
 @router.callback_query(lambda c: c.data == "approve_panel")
 async def open_admin_panel(callback_query: CallbackQuery):
     user_id = int(callback_query.from_user.id)
-    if str(user_id) not in ADMINS:
-    #if user_id not in ADMINS:
+    #if str(user_id) not in ADMINS:
+    if user_id not in ADMINS:
         await callback_query.message.answer("🚫 Сизда рухсат йўқ.")
         return
 
@@ -1058,8 +1065,8 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         await callback_query.message.edit_text("📋 Ролни қайта танланг:", reply_markup=start_kb(user_id))
 
     elif data == "admin":
-        #if user_id not in ADMINS:
-        if str(user_id) not in ADMINS:
+        if user_id not in ADMINS:
+        #if str(user_id) not in ADMINS:
             return
 
         # Инлайн клавиатура тузиш

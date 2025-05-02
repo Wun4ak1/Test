@@ -9,7 +9,7 @@
             "car_number": "50 U 974 ZA",
             "seat_count": "4"
         },
-        "rating": 1.0,
+        "rating": 0,
         "approved": true
     },
     "6655826848": {
@@ -22,7 +22,7 @@
             "car_number": "50 U 974 ZA",
             "seat_count": "4"
         },
-        "rating": 1.0,
+        "rating": 0,
         "approved": true,
         "order": {
             "status": "new",
@@ -49,7 +49,7 @@
             "car_number": "50 Y 406 BB",
             "seat_count": "4"
         },
-        "rating": 1.0,
+        "rating": 0,
         "approved": true,
         "order": {
             "status": "new",
