@@ -9,14 +9,7 @@ load_dotenv()
 # Атроф-муҳит ўзгарувчиларини оламиз
 TOKEN = os.getenv("TOKEN")
 
-ADMINS_RAW = os.getenv("ADMINS", "{}")  # 🔁 default: dict кўринишида
-
-try:
-    ADMINS = json.loads(ADMINS_RAW)
-except json.JSONDecodeError:
-    ADMINS = {}
-
-# Фақат ID лардан иборат set ёки рўйхат ҳам тузиш мумкин:
-ADMIN_IDS = set(map(int, ADMINS.keys()))  # Agar kerak bo‘lsa
+ADMINS = json.loads(os.getenv("ADMINS", "[]"))
+ADMIN_IDS = set(map(int, ADMINS))
 
 OTHER_SECRET = os.getenv("OTHER_SECRET")
