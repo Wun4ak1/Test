@@ -76,7 +76,7 @@
             "car_number": "50 W 439 NA",
             "seat_count": "4"
         },
-        "rating": 1.0,
+        "rating": 0,
         "approved": true
     },
     "5617902876": {
@@ -89,7 +89,7 @@
             "car_number": "50Q029DB",
             "seat_count": "4"
         },
-        "rating": 0,
+        "rating": 1.0,
         "approved": true,
         "order": {
             "status": "new",
@@ -98,8 +98,8 @@
             "to_district": "Яшнобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-02",
-            "time": "16:00 - 19:59",
+            "date": "2025-05-03",
+            "time": "06:00 - 11:59",
             "order_number": 1,
             "status_timestamps": {
                 "created": "2025-04-26 22:09:41"
@@ -110,8 +110,8 @@
         "id": "209550763",
         "status": "driver",
         "profile": {
-            "name": "Рустамхон",
-            "phone": "+998945755500",
+            "name": "Рустам",
+            "phone": "+998901234567",
             "car_model": "Нексия 2",
             "car_number": "01A123BC",
             "seat_count": "4"
@@ -120,14 +120,18 @@
         "order": {
             "status": "draft",
             "available_seats": 4,
-            "to_region": "Бухоро",
-            "to_district": "Когон",
-            "from_region": "Самарқанд",
-            "from_district": "Тайлоқ",
+            "to_region": "Тошкент ш.",
+            "to_district": "Олмазор",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
             "date": "2025-05-02",
-            "time": "12:00 - 15:59"
+            "time": "12:00 - 15:59",
+            "order_number": 1,
+            "status_timestamps": {
+                "created": "2025-05-02 21:53:11"
+            }
         },
-        "approved": false
+        "approved": true
     },
     "7233540342": {
         "id": "7233540342",

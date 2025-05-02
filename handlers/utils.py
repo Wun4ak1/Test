@@ -7,6 +7,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, time as dtime
+from zoneinfo import ZoneInfo
 import logging
 from config import TOKEN
 # 'handlers' папкасини Python импорт маршрутига қўшиш
@@ -287,7 +288,7 @@ async def save_order(user_id, user_type, bot):
     order_number = len(user_data.get("order_history", [])) + 1
 
     # 🕓 Ҳозирги вақт
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     # Янги ордер яратамиз (нарх билан)
     new_order = {
@@ -981,7 +982,7 @@ def format_date(date_str: str) -> str:
         return date_str
 
 def get_available_dates():
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Asia/Tashkent"))
     dates = []
 
     for i in range(3):  # Фақат 3 кун кўрсатамиз
@@ -991,7 +992,7 @@ def get_available_dates():
     return dates
 
 def get_available_times(selected_day):
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Asia/Tashkent"))
     time_slots = {
         "morning": "06:00",
         "afternoon": "13:00",

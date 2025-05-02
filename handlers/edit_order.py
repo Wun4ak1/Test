@@ -17,6 +17,7 @@ from common_order import (
     create_day_keyboard, create_time_keyboard, check_existing_order, SLUG_TO_REGION, SLUG_TO_DISTRICT, TIME_SLOTS
 )
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 #from collections import defaultdict
 from states import EditOrder
 #import logging
@@ -306,7 +307,7 @@ async def edit_date(cb: CallbackQuery, state: FSMContext):
         await cb.answer(); return
 
     # «today / tomorrow / other»
-    today = datetime.now().date()
+    today = datetime.now(ZoneInfo("Asia/Tashkent")).date()
     selected = today if day_key == "today" else \
                today + timedelta(days=1) if day_key == "tomorrow" else None
 

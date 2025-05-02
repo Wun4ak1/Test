@@ -12,7 +12,12 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import ADMINS, TOKEN
+from config import TOKEN #ADMINS
+ADMINS = os.getenv("ADMINS")
+if ADMINS:
+    ADMINS = {int(i) for i in ADMINS.split(",")}
+else:
+    ADMINS = set()
 from states import AdminStates
 from keyboards.start_kb import start_kb
 from utils import (

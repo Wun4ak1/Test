@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -376,7 +377,7 @@ async def process_accept_passenger(callback_query: CallbackQuery):
             print(f"❌ Ҳайдовчига хабар юборишда хато: {e}")
 
     # 🕓 Вақт белгиси
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
     
     # 📝 Йўловчи буюртмасини янгилаймиз
     if "order" in passenger:
@@ -405,7 +406,7 @@ async def process_driver_on_the_way(callback_query: CallbackQuery):
         return
 
     order = driver["order"]
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     # ✅ Статус ва вақтни белгилаш
     order["status"] = "on_the_way"
@@ -464,7 +465,7 @@ async def process_arrived_yes(callback_query: CallbackQuery):
     passenger_id = str(callback_query.from_user.id)
 
     # ⏳ Вақтни тайёрлаш
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     # 🧍‍♂️ Йўловчининг order объектига статус сақлаш
     passengers = load_json(PASSENGER_PATH)
@@ -531,7 +532,7 @@ async def process_trip_finished(callback_query: CallbackQuery):
         return
 
     order = passenger["order"]
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     # 🔵 Йўловчи сафарини done қилиш
     order["status"] = "arrived"
@@ -606,7 +607,7 @@ async def process_driver_arrived(callback_query: CallbackQuery):
         return
 
     order = driver["order"]
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     # ✅ Статусни якунлаш
     order["status"] = "arrived"
@@ -718,7 +719,7 @@ async def process_feedback(callback_query: CallbackQuery):
     if "order" in passenger:
         order = passenger["order"]
 
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
         order["status"] = "arrived"
         order.setdefault("status_timestamps", {})["arrived"] = now
 

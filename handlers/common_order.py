@@ -13,6 +13,7 @@ from utils import (
     save_driver_order_history, clear_driver_order, save_passenger_order_history, clear_passenger_order, DRIVER_PATH, PASSENGER_PATH
 )
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from collections import defaultdict
 from unidecode import unidecode     # pip install Unidecode
 from states import OrderState
@@ -342,7 +343,7 @@ def count_orders_date(user_type: str, to_region: str, to_district: str, from_reg
     orders = load_drivers() if user_type == "passenger" else load_passenger()
     count_by_date = defaultdict(int)
 
-    today = datetime.now().date()
+    today = datetime.now(ZoneInfo("Asia/Tashkent")).date()
     tomorrow = today + timedelta(days=1)
 
     for order in orders.values():
@@ -385,8 +386,8 @@ def create_time_keyboard(curr, u, edit=False):
     btns = []
 
     selected_date = curr.get("date")
-    is_today = selected_date == datetime.now().strftime("%Y-%m-%d")
-    now = datetime.now()
+    is_today = selected_date == datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d")
+    now = datetime.now(ZoneInfo("Asia/Tashkent"))
     now_time = now.time()
 
     for key, (label, time_range) in TIME_SLOTS.items():
@@ -421,8 +422,8 @@ def create_exact_time_keyboard(user_type, current_order, orders, is_editing: boo
     keyboard = InlineKeyboardMarkup(row_width=4)
 
     selected_date = current_order.get("date")
-    is_today = selected_date == datetime.now().strftime("%Y-%m-%d")
-    now_hour = datetime.now().hour
+    is_today = selected_date == datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d")
+    now_hour = datetime.now(ZoneInfo("Asia/Tashkent")).hour
 
     for hour in range(24):
         if is_today and hour < now_hour:
@@ -485,7 +486,7 @@ def count_filtered_orders(user_type: str, current_order: dict, filter_key: str, 
 
         if filter_key == "day":
             # Бугун/эртага фильтр
-            today = datetime.now().date()
+            today = datetime.now(ZoneInfo("Asia/Tashkent")).date()
             date_value = order_data.get("date")
             if not date_value:
                 continue
@@ -582,7 +583,7 @@ async def check_existing_order(
         
         elif status == "arrived":
             # ✅ Сафар якунланган, ордерни тарихга ўтказиш керак
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
             path = DRIVER_PATH if user_type == "driver" else PASSENGER_PATH
 
             with open(path, 'r+', encoding='utf-8') as f:
@@ -810,7 +811,7 @@ async def choose_date(cb: CallbackQuery, state: FSMContext):
 async def handle_custom_date(message: Message, state: FSMContext):
     try:
         selected_date = datetime.strptime(message.text.strip(), "%Y-%m-%d")
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Tashkent"))
 
         if selected_date.date() < now.date():
             await message.answer("⛔ Бу сана ўтган. Илтимос, келгуси санани киритинг. (Йил-Ой-Кун форматида, масалан: 2025-05-30)")
@@ -882,13 +883,13 @@ async def choose_time_slot(callback_query: CallbackQuery, state: FSMContext):
     user_type_raw, day_key = data_parts
     user_type = "driver" if user_type_raw == "d" else "passenger"  # ✅ user_type ни конвертация қилиб олиш
 
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Asia/Tashkent"))
     if day_key == "today":
         selected_date = now.date()
     elif day_key == "tomorrow":
         selected_date = now.date() + timedelta(days=1)
     else:
-        example_date = (datetime.now().date() + timedelta(days=5)).strftime("%Y-%m-%d")
+        example_date = (datetime.now(ZoneInfo("Asia/Tashkent")).date() + timedelta(days=5)).strftime("%Y-%m-%d")
         await callback_query.message.answer(
             f"📅 Илтимос, сана киритинг (Йил-Ой-Кун форматда, масалан: {example_date}):"
         )
@@ -962,7 +963,7 @@ async def handle_exact_time(message: Message, state: FSMContext):
         selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
         entered_time = datetime.strptime(message.text.strip(), "%H:%M").time()
         full_datetime = datetime.combine(selected_date, entered_time)
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Tashkent"))
 
         if full_datetime <= now:
             await message.answer("⛔ Ушбу вақт аллақачон ўтган. Илтимос, келажакдаги вақтни киритинг. (масалан: 18:45)")
@@ -1203,7 +1204,7 @@ async def cancel_current_order(callback_query: CallbackQuery):
 
     # Буюртмага статус қўшамиз ва тарихга сақлаймиз
     order["status"] = "cancelled"
-    order["cancelled_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    order["cancelled_at"] = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
 
     if user_type == "driver":
         save_driver_order_history(user_id, order)
