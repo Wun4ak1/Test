@@ -10,7 +10,9 @@
             "seat_count": "4"
         },
         "rating": 0,
-        "approved": true
+        "approved": true,
+        "balance": 40000,
+        "bonus": 0
     },
     "6655826848": {
         "id": "6655826848",
@@ -24,6 +26,8 @@
         },
         "rating": 0,
         "approved": true,
+        "balance": 40000,
+        "bonus": 0,
         "order": {
             "status": "new",
             "available_seats": 4,
@@ -51,7 +55,8 @@
         },
         "rating": 0,
         "approved": true,
-        "balance": 20000,
+        "balance": 40000,
+        "bonus": 0,
         "order": {
             "status": "new",
             "available_seats": 2,
@@ -78,7 +83,9 @@
             "seat_count": "4"
         },
         "rating": 0,
-        "approved": true
+        "approved": true,
+        "balance": 40000,
+        "bonus": 0
     },
     "5617902876": {
         "id": "5617902876",
@@ -92,6 +99,8 @@
         },
         "rating": 1.0,
         "approved": true,
+        "balance": 40000,
+        "bonus": 0,
         "order": {
             "status": "new",
             "available_seats": 4,
@@ -132,7 +141,9 @@
                 "created": "2025-05-04 02:38:52"
             }
         },
-        "approved": true
+        "approved": true,
+        "balance": 0,
+        "bonus": 0
     },
     "7233540342": {
         "id": "7233540342",
@@ -148,7 +159,7 @@
         "approved": true,
         "order": {
             "status": "new",
-            "available_seats": 3,
+            "available_seats": 4,
             "to_region": "Тошкент ш.",
             "to_district": "Юнусобод",
             "from_region": "Наманган",
@@ -158,16 +169,9 @@
             "order_number": 1,
             "status_timestamps": {
                 "created": "2025-05-04 15:20:29"
-            },
-            "accepted_passengers": [
-                {
-                    "passenger_id": "6580111328",
-                    "price": 142000
-                }
-            ]
+            }
         },
-        "balance": 25800,
-        "bonus": 0,
-        "orders": []
+        "balance": 0,
+        "bonus": 0
     }
 }
