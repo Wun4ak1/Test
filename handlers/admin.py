@@ -23,7 +23,7 @@ from keyboards.start_kb import start_kb
 from utils import (
     recommend_multiple_drivers_to_passenger,
     get_driver_order, save_passenger_order, send_or_edit_text,
-    load_drivers, is_driver_approved, USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
+    load_drivers, USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
 )
 bot = Bot(token=TOKEN)
 

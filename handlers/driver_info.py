@@ -1,20 +1,42 @@
 # handlers/driver_info.py
+import os
 import json
-from aiogram import Router, types, F
-from aiogram.types import CallbackQuery
+from aiogram import Bot, Router, types, F
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command
 from states import DriverInfo
-from start import notify_admins_about_new_driver
+#from start import notify_admins_about_new_driver
 from utils import save_driver, load_drivers, send_or_edit_text, USER_STATUS_PATH, DRIVER_PATH
+from keyboards.start_kb import start_kb
+#from config import TOKEN
+TOKEN = os.getenv("TOKEN")
+ADMINS = os.getenv("ADMINS")
+if ADMINS:
+    ADMINS = {int(i) for i in ADMINS.split(",")}
+else:
+    ADMINS = set()
+
 import logging
 
+bot = Bot(token=TOKEN)
 router = Router()
 
 @router.callback_query(F.data == "is_driver_approved_check")
 async def check_driver_info_callback(callback: CallbackQuery, state: FSMContext):
-    await callback.message.answer("Ҳозирча сизнинг маълумотларингиз админ томонидан кўриб чиқиляпти. Илтимос кутиб туринг.")
-    await state.set_state(DriverInfo.name)
+    user_id = str(callback.from_user.id)
+    drivers = load_drivers()
+    driver = drivers.get(user_id)
+
+    # 🔎 Агар ҳайдовчи маълумот топширмаган бўлса
+    if not driver or not driver.get("driver_data") and not driver.get("profile"):
+        await callback.message.answer("❗️Сиз ҳали маълумот киритмадингиз. Илтимос, аввал исмингизни киритинг.")
+        await state.set_state(DriverInfo.name)
+        return
+
+    # 🔄 Агар маълумот бор, лекин ҳали тасдиқланмаган бўлса
+    await callback.message.answer("⏳ Ҳозирда сизнинг маълумотларингиз админ томонидан кўриб чиқиляпти. Илтимос кутиб туринг.")
+    await state.clear()
 
 @router.callback_query(F.data == "haydovchi")
 async def start_driver_info_callback(callback: CallbackQuery, state: FSMContext):
@@ -108,10 +130,12 @@ def save_driver_profile(user_id, profile_data):
     drivers[user_id] = {
         **existing_data,
         "id": user_id,
-        "status": "driver",
+        "status": "pending_approval",
         "profile": clean_profile,
         "rating": existing_data.get("rating", 0),
-        "approved": existing_data.get("approved", False)
+        "approved": existing_data.get("approved", False),
+        "balance": 0,  # Янги баланс
+        "bonus": 0  # Янги бонус
     }
 
     save_driver(drivers)
@@ -130,30 +154,112 @@ def save_driver_pending(user_id, driver_data):
     logging.info(f"Ҳайдовчи {user_id} маълумотлари тасдиқ кутмоқда.")
 
 # ✅ 2. Админ тасдиқлаганда (мисол учун админ менюда):
-def approve_driver(user_id):
+def approve_driver(user_id: str):
     users = load_drivers()
-    user_id = str(user_id)
 
-    if user_id in users and users[user_id].get("status") == "pending_approval":
-        driver_data = users[user_id].get("driver_data", {})
+    if user_id not in users or users[user_id].get("status") != "pending_approval":
+        logging.warning(f"Ҳайдовчи {user_id} топилмади ёки тасдиқлашга тайёр эмас.")
+        return False
 
-        users[user_id]["status"] = "driver"
-        users[user_id]["profile"] = driver_data  # ✅ 'profile' қўшилди
-        users[user_id]["rating"] = 0
-        users[user_id]["orders"] = []
-        users[user_id]["approved"] = True
+    # ✅ driver_data ёки profile ни текшириш
+    driver_data = users[user_id].get("driver_data") or users[user_id].get("profile")
+    if not driver_data:
+        logging.error(f"Профиль маълумотлари топилмади: {user_id}")
+        return False
 
-        # driver_data ни алоҳида driver.json га ҳам сақласак бўлади (ихтиёрий)
-        drivers = load_drivers()
-        drivers[user_id] = {
-            "profile": driver_data,
-            "rating": 0,
-            "orders": []
-        }
+    users[user_id]["status"] = "driver"
+    users[user_id]["profile"] = driver_data
+    users[user_id]["rating"] = 0
+    users[user_id]["orders"] = []
+    users[user_id]["approved"] = True
+    users[user_id]["balance"] = 40000
+    users[user_id]["bonus"] = 0
 
-        save_driver(users)
-        logging.info(f"Ҳайдовчи {user_id} тасдиқланди ва profile қўшилди.")
-        return True
+    save_driver(users)
+    logging.info(f"Ҳайдовчи {user_id} тасдиқланди ва balance/bonus қўшилди.")
+    return True
 
-    logging.warning(f"Ҳайдовчи {user_id} топилмади ёки тасдиқлашга тайёр эмас.")
-    return False
+# ✅ 2. approval panel очиш
+@router.callback_query(lambda c: c.data == "approve_panel")
+async def open_admin_panel(callback_query: CallbackQuery):
+    user_id = int(callback_query.from_user.id)
+    logging.info(f"Callback data: {callback_query.data}")
+    print(f"Callback: {callback_query.data}")
+    #if str(user_id) not in ADMINS:
+    if user_id not in ADMINS:
+        await callback_query.message.answer("🚫 Сизда рухсат йўқ.")
+        return
+
+    drivers = load_drivers()
+    pending_drivers = {
+        k: v for k, v in drivers.items()
+        if v.get("status") == "pending_approval" and not v.get("approved", False)
+    }
+
+    if not pending_drivers:
+        await callback_query.message.answer("⏳ Тасдиқ кутaётган ҳайдовчилар йўқ.")
+        return
+
+    for driver_id, data in pending_drivers.items():
+        profile = data.get("profile") or data.get("driver_data")
+        if profile is None:
+            logging.warning(f"Профиль топилмади: driver_id={driver_id}, data={data}")
+            await callback_query.message.answer(f"⚠️ Хатолик: Ҳайдовчи {driver_id} профили топилмади.")
+            continue
+        text = (
+            f"👤 Исм: {profile['name']}\n"
+            f"📞 Телефон: {profile['phone']}\n"
+            f"🚘 Машина: {profile['car_model']} ({profile['car_number']})\n"
+            #f"💺 Жойлар сони: {profile['seat_count']}"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Тасдиқлаш", callback_data=f"approve_driver:{driver_id}")],
+            [InlineKeyboardButton(text="❌ Рад этиш", callback_data=f"reject_driver:{user_id}")]
+        ])
+
+        await callback_query.message.answer(text, reply_markup=keyboard)
+
+# ✅ 3. Callback: Тасдиқлаш тугмаси
+@router.callback_query(F.data.startswith("approve_driver:"))
+async def approve_driver_callback(callback_query: CallbackQuery, state: FSMContext):
+    driver_id = callback_query.data.split(":")[1]
+
+    logging.info(f"TASDIQLASH BOSILDI: {driver_id}")  # 👈 Қўшимча лог
+    print(f"TASDIQLANDI: {driver_id}")
+
+    success = approve_driver(driver_id)  # 🔁 Марказий approve_driver() ишлатилади
+
+    if success:
+        await callback_query.message.answer(f"✅ Ҳайдовчи {driver_id} муваффақиятли тасдиқланди.")
+        try:
+            await bot.send_message(
+                int(driver_id),
+                text="✅ Сиз админ томонидан тасдиқландингиз!\nЭнди асосий менюдан фойдаланишингиз мумкин.",
+                reply_markup=start_kb(int(driver_id))
+            )
+        except Exception as e:
+            await callback_query.message.answer(f"⚠️ Хабар юбориб бўлмади: {e}")
+    else:
+        await callback_query.message.answer(f"❌ Ҳайдовчи {driver_id} топилмади ёки тасдиқлашга тайёр эмас.")
+
+# админларга хабар юбориш
+async def notify_admins_about_new_driver(driver_id: int, driver_data: dict):
+    text = (
+        f"🆕 Тасдиқ кутaётган янги ҳайдовчи:\n\n"
+        f"👤 Исм: {driver_data['name']}\n"
+        f"📞 Телефон: {driver_data['phone']}\n"
+        f"🚘 Машина: {driver_data['car_model']} ({driver_data['car_number']})\n"
+#        f"💺 Жойлар сони: {driver_data['seat_count']}"
+    )
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[ 
+        [InlineKeyboardButton(text="✅ Тасдиқлаш", callback_data=f"approve_driver:{driver_id}")]
+    ])
+
+    for admin_id in ADMINS:
+        try:
+            # Админга хабар юбориш
+            await bot.send_message(admin_id, text, reply_markup=keyboard)
+        except Exception as e:
+            logging.error(f"⚠️ Админга хабар юбориб бўлмади ({admin_id}): {e}")

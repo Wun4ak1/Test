@@ -2,13 +2,20 @@
     "6580111328": {
         "phone": "+998945454555",
         "order": {
-            "status": "draft",
-            "to_region": "Тошкент в.",
-            "to_district": "Оҳангарон",
+            "status": "accepted",
+            "to_region": "Тошкент ш.",
+            "to_district": "Юнусобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-03",
-            "time": "06:00 - 19:59"
+            "date": "2025-05-04",
+            "time": "12:00 - 15:59",
+            "price": 142000,
+            "order_number": 3,
+            "status_timestamps": {
+                "created": "2025-05-04 10:40:39",
+                "accepted": "2025-05-04 15:42:12"
+            },
+            "chosen_driver_id": "7233540342"
         }
     },
     "6534449376": {

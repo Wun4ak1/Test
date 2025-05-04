@@ -23,7 +23,7 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
     # Ҳайдовчи учун тугмалар
     elif user_status == "driver":
         if is_driver_approved(user_id):
-            add_button("🗺️ Йўналишни киритиш", "add_d")
+            add_button("🗺️ Йўналишни киритиш", "add_order")  # driver add_d
             #add_button("👥 Мос йўловчилар", "show_matching_passengers")
             #add_button("🧾 Йўловчи буюртмалари", "view_passenger_orders")
         else:
@@ -31,7 +31,7 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
             add_button("Маълумот ҳолати", "is_driver_approved_check")
 
     elif user_status == "passenger" or (user_status and user_status.startswith("location_")):
-        add_button("📍 Манзилни танланг", "add_p")
+        add_button("📍 Манзилни танланг", "add_order")   # passenger add_p
     
     # Ҳам driver, ҳам passenger учун умумий тугмалар
     if user_status in ("driver", "passenger") or (user_status and user_status.startswith("location_")):

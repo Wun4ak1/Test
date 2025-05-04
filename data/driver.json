@@ -51,6 +51,7 @@
         },
         "rating": 0,
         "approved": true,
+        "balance": 20000,
         "order": {
             "status": "new",
             "available_seats": 2,
@@ -58,8 +59,8 @@
             "to_district": "Юнусобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-02",
-            "time": "06:00 - 11:59",
+            "date": "2025-05-04",
+            "time": "16:00 - 19:59",
             "order_number": 1,
             "status_timestamps": {
                 "created": "2025-04-26 00:05:05"
@@ -98,7 +99,7 @@
             "to_district": "Яшнобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-03",
+            "date": "2025-05-04",
             "time": "06:00 - 11:59",
             "order_number": 1,
             "status_timestamps": {
@@ -118,17 +119,17 @@
         },
         "rating": 0,
         "order": {
-            "status": "draft",
+            "status": "new",
             "available_seats": 4,
-            "to_region": "Тошкент ш.",
-            "to_district": "Олмазор",
-            "from_region": "Наманган",
-            "from_district": "Косонсой",
-            "date": "2025-05-02",
-            "time": "12:00 - 15:59",
+            "to_region": "Тошкент в.",
+            "to_district": "Оҳангарон",
+            "from_region": "Бухоро",
+            "from_district": "Бухоро",
+            "date": "2025-05-04",
+            "time": "00:00 - 05:59",
             "order_number": 1,
             "status_timestamps": {
-                "created": "2025-05-02 21:53:11"
+                "created": "2025-05-04 02:38:52"
             }
         },
         "approved": true
@@ -138,21 +139,35 @@
         "status": "driver",
         "profile": {
             "name": "Рустамхон",
-            "phone": "+998945755500",
+            "phone": "+998901234567",
             "car_model": "Нексия 2",
-            "car_number": "50А197АА",
+            "car_number": "01A123BC",
             "seat_count": "4"
         },
         "rating": 0,
         "approved": true,
         "order": {
-            "status": "draft",
-            "available_seats": 4,
-            "to_region": "Тошкент в.",
-            "to_district": "Зангиота",
-            "from_region": "Хоразм",
-            "from_district": "Янгиариқ",
-            "date": "2025-05-03"
-        }
+            "status": "new",
+            "available_seats": 3,
+            "to_region": "Тошкент ш.",
+            "to_district": "Юнусобод",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-05-04",
+            "time": "12:00 - 15:59",
+            "order_number": 1,
+            "status_timestamps": {
+                "created": "2025-05-04 15:20:29"
+            },
+            "accepted_passengers": [
+                {
+                    "passenger_id": "6580111328",
+                    "price": 142000
+                }
+            ]
+        },
+        "balance": 25800,
+        "bonus": 0,
+        "orders": []
     }
 }

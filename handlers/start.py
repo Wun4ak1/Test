@@ -26,7 +26,7 @@ from keyboards.start_kb import start_kb
 from utils import (
     load_json, save_json, load_users, save_user_status, recommend_multiple_drivers_to_passenger,
     get_passenger_order, send_or_edit_last, load_passenger, get_driver_order, save_passenger_order, send_or_edit_text,
-    load_drivers, save_driver, is_driver_approved, create_departure_confirmation_keyboard,
+    load_drivers, save_driver, create_departure_confirmation_keyboard,
     USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
 )
 
@@ -303,6 +303,27 @@ async def process_accept_passenger(callback_query: CallbackQuery):
         await callback_query.answer("Маълумот топилмади.")
         return
 
+    # 💸 Баланс/бонусдан 10% ҳисоблаймиз ва ушлаб қоламиз
+    price = passenger['order'].get('price', 0)
+    commission = round(price * 0.10)
+
+    balance = driver.get("balance", 0)
+    bonus = driver.get("bonus", 0)
+
+    if balance + bonus < commission:
+        await callback_query.answer(
+            "❌ Балансингизда етарли маблағ йўқ. Йўловчини қабул қилиш учун илтимос балансни тўлдиринг.",
+            show_alert=True
+        )
+        return
+
+    if balance >= commission:
+        driver["balance"] -= commission
+    else:
+        remaining = commission - balance
+        driver["balance"] = 0
+        driver["bonus"] -= remaining
+
     # 🚫 Таймерни бекор қиламиз агар бор бўлса
     task = pending_timers.pop(passenger_id, None)
     if task:
@@ -312,7 +333,7 @@ async def process_accept_passenger(callback_query: CallbackQuery):
     if driver.get("order", {}).get("available_seats", 0) <= 0:
         await callback_query.answer("❌ Жой қолмаган!", show_alert=True)
         return
-    
+
     # 🧍‍♂️ Йўловчига тўлиқ маълумот
     driver_info_text = (
         f"✅ Танловингиз маъқулланди!\n\n"
@@ -345,12 +366,18 @@ async def process_accept_passenger(callback_query: CallbackQuery):
         f"📍 Йўналиш: {passenger['order']['from_district']} ➝ {passenger['order']['to_district']}\n"
         f"📅 Сана: {passenger['order']['date']}\n"
         f"⏰ Вақт: {passenger['order']['time']}\n"
-        f"💰 Нарх: {passenger['order'].get('price', 'Номаълум')} сўм"
+        f"💰 Нарх: {passenger['order'].get('price', 'Номаълум')} сўм\n\n"
+        f"Йўлга чиққанингизда тасдиқласангиз йўловчиларга билдиршнома юборамиз."
     )
-    #await callback_query.message.answer(full_info)
-    await send_or_edit_text(callback_query.message, full_info, reply_markup=None)
 
-    # 🪑 Ҳайдовчида камайтирамиз
+    # 🛣 Йўлга чиқдим тугмаси ҳар сафар юборилади
+    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛣 Йўлга чиқдим", callback_data="on_the_way")]
+    ])
+
+    await send_or_edit_text(callback_query.message, full_info, reply_markup=reply_markup)
+
+    # 🪑 Ҳайдовчида жой камайтирилади
     if "available_seats" in driver["order"]:
         driver["order"]["available_seats"] = max(0, driver["order"]["available_seats"] - 1)
 
@@ -378,7 +405,7 @@ async def process_accept_passenger(callback_query: CallbackQuery):
 
     # 🕓 Вақт белгиси
     timestamp = datetime.now(ZoneInfo("Asia/Tashkent")).strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # 📝 Йўловчи буюртмасини янгилаймиз
     if "order" in passenger:
         order = passenger["order"]
@@ -839,92 +866,6 @@ async def show_my_stats(callback_query: types.CallbackQuery):
 
     await callback_query.message.answer(text)
     await callback_query.answer()
-
-# ✅ 2. approval panel очиш
-@router.callback_query(lambda c: c.data == "approve_panel")
-async def open_admin_panel(callback_query: CallbackQuery):
-    user_id = int(callback_query.from_user.id)
-    #if str(user_id) not in ADMINS:
-    if user_id not in ADMINS:
-        await callback_query.message.answer("🚫 Сизда рухсат йўқ.")
-        return
-
-    drivers = load_drivers()
-    pending_drivers = {
-        k: v for k, v in drivers.items()
-        if v.get("status") == "driver" and not v.get("approved", False)
-    }
-
-    if not pending_drivers:
-        await callback_query.message.answer("⏳ Тасдиқ кутaётган ҳайдовчилар йўқ.")
-        return
-
-    for driver_id, data in pending_drivers.items():
-        profile = data.get("profile") or data.get("driver_data")
-        if profile is None:
-            logging.warning(f"Профиль топилмади: driver_id={driver_id}, data={data}")
-            await callback_query.message.answer(f"⚠️ Хатолик: Ҳайдовчи {driver_id} профили топилмади.")
-            continue
-        text = (
-            f"👤 Исм: {profile['name']}\n"
-            f"📞 Телефон: {profile['phone']}\n"
-            f"🚘 Машина: {profile['car_model']} ({profile['car_number']})\n"
-            #f"💺 Жойлар сони: {profile['seat_count']}"
-        )
-
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Тасдиқлаш", callback_data=f"approve_driver:{driver_id}")],
-            [InlineKeyboardButton(text="❌ Рад этиш", callback_data=f"reject_driver:{user_id}")]
-        ])
-
-        await callback_query.message.answer(text, reply_markup=keyboard)
-
-# ✅ 3. Callback: Тасдиқлаш тугмаси
-@router.callback_query(F.data.startswith("approve_driver:"))
-async def approve_driver(callback_query: CallbackQuery, state: FSMContext):
-    driver_id = callback_query.data.split(":")[1]
-    users = load_drivers()
-
-    if driver_id not in users:
-        await callback_query.message.answer(f"⚠️ Хатолик: Ҳайдовчи {driver_id} топилмади.")
-        return
-    
-    user = users[driver_id]
-    user["approved"] = True
-    save_driver(users)
-
-    await callback_query.message.answer(f"✅ Ҳайдовчи {driver_id} муваффақиятли тасдиқланди.")
-
-    # ✅ Ҳайдовчига тасдиқланганлиги ҳақида хабар юбориш
-    try:
-        await bot.send_message(
-            int(driver_id),
-            text="✅ Сиз админ томонидан тасдиқландингиз!\nЭнди асосий менюдан фойдаланишингиз мумкин.",
-            reply_markup=start_kb(int(driver_id))
-        )
-    except Exception as e:
-        await callback_query.message.answer(f"⚠️ Хабар юбориб бўлмади: {e}")
-
-# Масалан, админларга хабар юбориш
-async def notify_admins_about_new_driver(driver_id: int, driver_data: dict):
-    text = (
-        f"🆕 Тасдиқ кутaётган янги ҳайдовчи:\n\n"
-        f"👤 Исм: {driver_data['name']}\n"
-        f"📞 Телефон: {driver_data['phone']}\n"
-        f"🚘 Машина: {driver_data['car_model']} ({driver_data['car_number']})\n"
-#        f"💺 Жойлар сони: {driver_data['seat_count']}"
-    )
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[ 
-        [InlineKeyboardButton(text="✅ Тасдиқлаш", callback_data=f"approve_driver:{driver_id}")]
-    ])
-
-    for admin_id in ADMINS:
-        try:
-            # Админга хабар юбориш
-            await bot.send_message(admin_id, text, reply_markup=keyboard)
-        except Exception as e:
-            logging.error(f"⚠️ Админга хабар юбориб бўлмади ({admin_id}): {e}")
 
 async def check_today_departures(bot):
     today = datetime.today().strftime("%Y-%m-%d")

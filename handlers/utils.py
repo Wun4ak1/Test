@@ -9,7 +9,8 @@ from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, time as dtime
 from zoneinfo import ZoneInfo
 import logging
-from config import TOKEN
+#from config import TOKEN
+TOKEN = os.getenv("TOKEN")
 # 'handlers' папкасини Python импорт маршрутига қўшиш
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from location import calculate_price
@@ -555,7 +556,9 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
                 "available_seats": order.get("available_seats", 0),
                 "rating": driver_data.get("rating", 0),
                 "id": driver_id,
-                "accepted_passenger_count": len(order.get("accepted_passengers", []))
+                "accepted_passenger_count": len(order.get("accepted_passengers", [])),
+                "balance": driver_data.get("balance", 0),
+                "bonus": driver_data.get("bonus", 0)
             }
 
             # Ҳайдовчи маълумоти тўлиқ бўлса, мос келган ҳайдовчини qo'shish
@@ -570,9 +573,7 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
         # 🚫 Танланган ҳайдовчини чиқариб ташлаш
         chosen_driver_id = user_order.get("chosen_driver_id")
         if chosen_driver_id:
-            matched_drivers = [
-                driver for driver in matched_drivers if driver["id"] != chosen_driver_id
-            ]
+            matched_drivers = [driver for driver in matched_drivers if driver["id"] != chosen_driver_id]
 
         if not matched_drivers:
             await bot.send_message(passenger_id, "⏳ Танланган ҳайдовчи билан боғланиб бўлмади.\nБошқа ҳайдовчилар қидирилмоқда.")
@@ -591,6 +592,40 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
         # 🔥 Якуний тартиб
         matched_drivers = invited_drivers + new_drivers + experienced_drivers
 
+        # 💰 Йўловчи буюртма нархидан 10% ҳисоблаш
+        required_amount = int(user_order.get("price", 0) * 0.10)
+
+        # 🧮 Ҳар бир ҳайдовчига total_funds қўшамиз
+        for d in invited_drivers + new_drivers + experienced_drivers:
+            d["total_funds"] = d.get("balance", 0) + d.get("bonus", 0)
+
+        # 🔢 Бошланғич тартибдаги ҳайдовчилар
+        all_sorted = invited_drivers + new_drivers + experienced_drivers
+
+        # 🧠 1. Етарли маблағлилар (тартибни сақлаб)
+        enough_invited = [d for d in invited_drivers if d["total_funds"] >= required_amount]
+        enough_new = [d for d in new_drivers if d["total_funds"] >= required_amount]
+        enough_experienced = [d for d in experienced_drivers if d["total_funds"] >= required_amount]
+        enough_funds = enough_invited + enough_new + enough_experienced
+        #enough_funds = enough_funds[:3]  # Фақат 3 тагача
+
+        # 🧠 2. Етарли эмас, лекин маблағи борлар → кўпдан камга
+        not_enough_all = invited_drivers + new_drivers + experienced_drivers
+        not_enough_funds = [
+            d for d in not_enough_all
+            if 0 < d["total_funds"] < required_amount and d not in enough_funds
+        ]
+        not_enough_funds.sort(key=lambda d: d["total_funds"], reverse=True)
+
+        # 🧠 3. Умуман маблағи йўқлар → мавжуд тартибда қолади
+        no_funds = [
+            d for d in not_enough_all
+            if d["total_funds"] == 0 and d not in enough_funds
+        ]
+
+        # 🧮 Якуний тартиб
+        matched_drivers = enough_funds + not_enough_funds + no_funds
+        
         # 📤 Ҳар бирини йўловчига қайта юбориш
         text = f"🔄 Танланган ҳайдовчи билан боғланиб бўлмади.\nСизга бошқа мос {len(matched_drivers)} та ҳайдовчи топилди:\n\n"
 
@@ -709,10 +744,32 @@ def is_time_match(time1, time2):
     print(f"🕰 Диапазон мослиги: {match}")
     return match
 
+def parse_range(val):
+    if "-" in val:
+        start_str, end_str = val.split("-")
+        start = parse_time_str(start_str)
+        end = parse_time_str(end_str)
+        return start, end
+    elif val in time_ranges:
+        start_str, end_str = time_ranges[val]
+        return parse_time_str(start_str), parse_time_str(end_str)
+    elif ":" in val:
+        t = parse_time_str(val)
+        return t, t
+    return None, None
+
+def is_now_in_time_range(time_val):
+    now = datetime.now().time()
+    t_start, t_end = parse_range(time_val)
+    if t_start and t_end:
+        return t_start <= now <= t_end
+    return False
+
 def is_match(order1, order2):
     from_district_match = order1.get("from_district") == order2.get("from_district")
     to_district_match = order1.get("to_district") == order2.get("to_district")
     to_region_match = order1.get("to_region") == order2.get("to_region")
+    status_match = order1.get("status") == "new" and order2.get("status") == "new"
 
     time1 = order1.get("time", "")
     time2 = order2.get("time", "")
@@ -723,36 +780,41 @@ def is_match(order1, order2):
 
     try:
         today = datetime.today().date()
+        now_time = datetime.now().time()
         date1 = datetime.strptime(date1_str, "%Y-%m-%d").date()
         date2 = datetime.strptime(date2_str, "%Y-%m-%d").date()
 
-        # Саналарни мослаштириш: агар дата бўлмаса, вақт мослиги текширилади
-        date_match = (
-            date1 == date2 or  # Агар саналар бир хил бўлса
-            (date1 < today)  # Агар сана ўтган бўлса, ва вақтни текширишнинг кераги йўқ
-        )
-
-        # Агар сана бир хил бўлса, вақтни ҳам текшириб чиқамиз
-        if date1 == date2:
-            time_match = is_time_match(time1, time2)
+        # Агар сана ўтган бўлса, автоматик time_match = True
+        if date2 < today:
+            date_match = True
+            time_match = True
+        else:
+            # Агар сана ҳозирги санага тенг бўлса ёки иккаласи бир хил бўлса
+            date_match = date1 == date2
+            if date_match:
+                # Агар сана бир хил бўлса, вақт интерваллари ўтган вақтда бўлса True
+                if is_time_match(time1, time2) or is_now_in_time_range(time1) or is_now_in_time_range(time2):
+                    time_match = True
 
     except Exception as e:
         print(f"❌ Sana parse xato: {e}")
         date_match = False
+        time_match = False
 
     print(f"🔍 Солиштириш:")
     print(f"    from_district: {order1.get('from_district')} == {order2.get('from_district')}")
     print(f"    to_district  : {order1.get('to_district')} == {order2.get('to_district')}")
     print(f"    to_region  : {order1.get('to_region')} == {order2.get('to_region')}")
-    print(f"    date         : {order1.get('date')} == {order2.get('date')}")
-    print(f"    time         : {order1.get('time')} == {order2.get('time')}")
+    print(f"    date         : {order1.get('date')} == {order2.get('date')} date_match: {date_match}")
+    print(f"    time         : {order1.get('time')} == {order2.get('time')} time_match: {time_match}")
     print(f"    🕰 Вақт мослиги: {is_time_match(order1.get('time', ''), order2.get('time', ''))}")
 
     return (
         from_district_match and
         to_region_match and
         date_match and
-        time_match
+        #time_match and
+        status_match 
     )
 
 def create_contact_button(user_id: int, name: str, phone: str | None = None) -> InlineKeyboardMarkup:

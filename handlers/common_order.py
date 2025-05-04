@@ -639,11 +639,18 @@ async def check_existing_order(
 
     return False
 
-# @router.callback_query(F.data == "add_order")
-@router.callback_query(lambda c: c.data.startswith("add_"))
+# @router.callback_query(lambda c: c.data.startswith("add_"))
+@router.callback_query(F.data == "add_order")
 async def choose_to_region(callback_query: CallbackQuery, state: FSMContext):
-    user_type = "passenger" if callback_query.data == "add_p" else "driver"
+    #user_type = "passenger" if callback_query.data == "add_p" else "driver"
     user_id = callback_query.from_user.id
+    user_status = get_user_status(user_id)
+
+    if user_status not in ("driver", "passenger"):
+        await callback_query.answer("Илтимос, аввал ролни танланг.", show_alert=True)
+        return
+
+    user_type = user_status
 
     if await check_existing_order(callback_query, user_id, user_type):
         return
@@ -1174,17 +1181,27 @@ async def confirm_order(callback_query: CallbackQuery):
         price = order.get("price", -1)
         price_text = f"\n💰 Нарх: *{price:,} сўм*" if price > 0 else "\n💰 Нарх: *Аниқланмади*"
 
-    # 📝 Ҳабар матни
+    # 📤 Реферал тугма
+    bot_username = (await callback_query.bot.me()).username
+    invite_link = f"https://t.me/{bot_username}?start={user_id}"
+
+    referral_button = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🤝 Дўстларга юбориш", switch_inline_query=invite_link)]
+    ])
+
+    # 📝 Ҳабар матни InlineKeyboardButton(text="🤝 Дўстларга юбориш", url=invite_link)
     text = (
         f"✅ Ҳурматли {role}! Буюртмангиз қабул қилинди.\n\n"
         f"📍 Манзил: *{to_region}*\n"
         f"📍 Йўналиш: *{from_district} → {to_district}*\n"
         f"🗓 Сана: *{date}*\n"
         f"🕰 Вақт: *{time}*"
-        f"{price_text}\n"
+        f"{price_text}"
+        f"\n\n🎁 Дўстларингизга ҳам юборинг – бонуслар кутади!"
     )
 
-    await send_or_edit_text(callback_query.message, text, parse_mode="Markdown")
+    #await send_or_edit_text(callback_query.message, text, parse_mode="Markdown")
+    await send_or_edit_text(callback_query.message, text, reply_markup=referral_button, parse_mode="Markdown")
 
 @router.callback_query(lambda c: c.data == "cancel_order")
 async def cancel_current_order(callback_query: CallbackQuery):
