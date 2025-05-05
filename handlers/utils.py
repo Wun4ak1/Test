@@ -36,15 +36,10 @@ DRIVER_PATH = os.path.join(data_dir, 'driver.json')
 logging.basicConfig(level=logging.INFO)
 # === STATUS VA ORDER MA'LUMOTLAR ===
 def load_users():
-    try:
-        with open(USER_STATUS_PATH, "r", encoding='utf-8') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    return load_json(USER_STATUS_PATH)
 
 def save_users(users):
-    with open(USER_STATUS_PATH, "w", encoding='utf-8') as file:
-        json.dump(users, file, ensure_ascii=False, indent=2)
+    save_json(USER_STATUS_PATH, users)
 
 def get_user_status(user_id):
     users = load_users()
@@ -82,6 +77,7 @@ def load_json(file_path):
                 return {}
             return json.loads(content)
     except json.JSONDecodeError:
+#    except (FileNotFoundError, json.JSONDecodeError):
         # Агар файл бузилган бўлса, автоматик тозаланади
         return {}
 

@@ -1,14 +1,16 @@
 # handlers/start.py
+import matplotlib.pyplot as plt
 import logging
 import json
 from aiogram import Bot, Router, F, types
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -683,6 +685,44 @@ async def process_trip_finished(callback_query: CallbackQuery):
         parse_mode="Markdown"
     )
 
+@router.callback_query(F.data.startswith("user_detail:"))
+async def show_user_detail(callback: CallbackQuery):
+    user_id = callback.data.split(":")[1]
+    
+    # 📥 Маълумотларни юклаш
+    users = load_users()
+    passengers = load_passenger()
+    drivers = load_drivers()
+
+    user_info = users.get(user_id, {})
+    passenger_info = passengers.get(user_id, {})
+    driver_info = drivers.get(user_id, {})
+
+    text = f"<b>👤 Фойдаланувчи ID:</b> <code>{user_id}</code>\n"
+
+    if user_info:
+        text += f"📌 Статус: {user_info.get('status', '❓')}\n"
+        text += f"📛 Исм: {user_info.get('first_name', 'йўқ')}\n"
+
+    if passenger_info:
+        order = passenger_info.get("order")
+        if order:
+            text += "\n<b>🧍‍♂️ Йўловчи буюртмаси:</b>\n"
+            for key, value in order.items():
+                text += f"- {key}: {value}\n"
+
+    if driver_info:
+        order = driver_info.get("order")
+        if order:
+            text += "\n<b>🚗 Ҳайдовчи буюртмаси:</b>\n"
+            for key, value in order.items():
+                text += f"- {key}: {value}\n"
+
+    if not passenger_info and not driver_info:
+        text += "\nℹ️ Буюртма маълумотлари мавжуд эмас."
+
+    await callback.message.answer(text, parse_mode="HTML")
+
 @router.callback_query(F.data.startswith("arrived_no_"))
 async def process_arrived_no(callback_query: CallbackQuery):
     data_parts = callback_query.data.split("_")
@@ -957,16 +997,23 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
 
             # 🔔 Админга хабар
             for admin_id in ADMINS:
-                await bot.send_message(
-                    admin_id,
-                    text=(
-                        f"🆕 <b>Янги фойдаланувчи ботга кирди</b>\n\n"
-                        f"👤 Исм: {message.from_user.full_name}\n"
-                        f"🔗 Username: @{message.from_user.username or 'йўқ'}\n"
-                        f"🆔 ID: <code>{user_id}</code>"
-                    ),
-                    parse_mode="HTML"
-                )
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔍 Подробно", callback_data=f"user_detail:{user_id}")]
+                ])
+                try:
+                    await bot.send_message(
+                        admin_id,
+                        text=(
+                            f"🆕 <b>Янги фойдаланувчи ботга кирди</b>\n\n"
+                            f"👤 Исм: {message.from_user.full_name}\n"
+                            f"🔗 Username: @{message.from_user.username or 'йўқ'}\n"
+                            f"🆔 ID: <code>{user_id}</code>"
+                        ),
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"❌ Админга хабар юборишда хато: {e}")
         else:
             if "first_name" not in status_data[user_id]:
                 status_data[user_id]["first_name"] = message.from_user.first_name
@@ -1046,77 +1093,6 @@ async def check_today_departures(bot):
                 reply_markup=create_departure_confirmation_keyboard(driver_id)
             )
 
-def get_bot_statistics():
-    users = load_users()           # Foydalanuvchilar statuslari
-    passengers = load_passenger()  # Yo‘lovchi buyurtmalari
-    drivers = load_drivers()       # Haydovchi buyurtmalari
-
-    total_passengers = sum(1 for u in users.values() if u.get("status") == "passenger")
-    total_drivers = sum(1 for u in users.values() if u.get("status") == "driver")
-
-    total_orders_passengers = 0
-    total_orders_drivers = 0
-    active_orders = 0
-    active_orders_passengers = 0
-    active_orders_drivers = 0
-
-    # Yo‘lovchilar buyurtма тарихини ҳисоблаш
-    for passenger_data in passengers.values():
-        history = passenger_data.get("order_history", [])
-        total_orders_passengers += len(history)
-
-        if passenger_data.get("order"):  # faol buyurtma бор
-            active_orders_passengers += 1
-            active_orders += 1
-
-    # Haydovchilar buyurtма тарихини ҳисоблаш
-    for driver_data in drivers.values():
-        history = driver_data.get("order_history", [])
-        total_orders_drivers += len(history)
-
-        if driver_data.get("order"):  # faol buyurtma бор
-            active_orders_drivers += 1
-            active_orders += 1
-
-    total_orders = total_orders_passengers + total_orders_drivers
-
-    return {
-        "active_orders": active_orders,
-        "total_orders": total_orders,
-        "total_passengers": total_passengers,
-        "total_orders_passengers": total_orders_passengers,
-        "active_orders_passengers": active_orders_passengers,
-        "total_drivers": total_drivers,
-        "total_orders_drivers": total_orders_drivers,
-        "active_orders_drivers": active_orders_drivers
-    }
-
-# "📋 Статистика"
-@router.callback_query(F.data == "statistika")
-async def show_statistics(callback_query: CallbackQuery):
-    user_id = callback_query.from_user.id
-    # Сизнинг статистика логикаингиз
-    #await callback_query.message.answer("Ҳайдовчи статистикаси тайёрланмоқда...")
-    stats = get_bot_statistics()
-
-    text = (
-        "<b>/statistics</b>\n"
-        "↳ <b>Ботдаги жорий статистика:</b>\n\n"
-        f"- 📅 Бугунги сафарлар: {stats['total_orders']} та\n"
-        f"- 🚗 Ҳайдовчилар: {stats['total_drivers']} та\n"
-        f"- 🧍‍♂️ Йўловчилар сони: {stats['total_passengers']} та\n"
-        f"- ✅ Якунланган буюртмалар: {stats['total_orders'] - stats['active_orders']} та\n"
-        f"- ⏳ Жорий буюртмалар: {stats['active_orders']} та\n\n"
-        #f"- ⭐ Ўртача рейтинг: 4.8\n"      # Агар реал ҳисоб-китоб бўлса, динамик қилиб олиб келиш мумкин
-        #f"- 💬 Бугунги feedback'лар: 20 та\n\n"  # Бу ҳам худди шундай
-        f"- 📦 Ҳайдовчилар буюртмалар: {stats['total_orders_drivers']}\n"
-        f"- ⏳ Жараёнда: {stats['active_orders_drivers']}\n\n"
-        f"- 📦 Йўловчилар буюртмалар: {stats['total_orders_passengers']}\n"
-        f"- ⏳ Жараёнда: {stats['active_orders_passengers']}"
-    )
-
-    await callback_query.message.answer(text, parse_mode="HTML")
-
 # Ҳайдовчилар рўйхати чиқарадиган функция
 @router.callback_query(F.data == "show_drivers_list")
 async def show_drivers_list(callback_query: CallbackQuery):
@@ -1179,23 +1155,12 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
             [InlineKeyboardButton(text="🚘 Ҳайдовчилар рўйхати", callback_data="show_drivers_list")],
+            [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")],
             [InlineKeyboardButton(text="👥 Йўловчилар рўйхати", callback_data="show_passengers_list")],
             [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
-            [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")],
             [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
-
-        # Ордерлар турини танлаш тугмаси
-        await callback_query.message.edit_text(
-            "👮 Админ панел!\nКўрсатишни хохлаган ордер турини танланг:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
-                [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")]
-            ])
-        )
-
     
-        #await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
         await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
     elif data == "view_order":
@@ -1240,6 +1205,21 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 #    await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 #    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
+@router.callback_query(lambda c: c.data == "admin_back_to_panel")
+async def back_to_admin_panel(callback_query: CallbackQuery):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
+        [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
+        [InlineKeyboardButton(text="📅 Бугунги ордерлар", callback_data="today_orders")],
+        [InlineKeyboardButton(text="🚘 Ҳайдовчилар рўйхати", callback_data="show_drivers_list")],
+        [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")],
+        [InlineKeyboardButton(text="👥 Йўловчилар рўйхати", callback_data="show_passengers_list")],
+        [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
+        [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
+    ])
+
+    await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard)
 
 @router.message(Command("change_status"))
 @router.message(Command("change_role"))  # иккита вариант
@@ -1268,6 +1248,44 @@ async def send_json_files(message):
         logging.error(f"Файлларни юклашда хатолик: {e}")
         await message.answer("Файлларни юклашда хатолик юз берди.")
 
+
+@router.callback_query(lambda c: c.data == "today_orders")
+async def show_today_orders(callback: CallbackQuery):
+    try:
+        today_str = datetime.now().strftime("%Y-%m-%d")  # 2025-05-05 каби форматда
+        
+        text = "📅 <b>Бугунги ордерлар</b>\n\n"
+
+        # Йўловчи ордерлари
+        with open(PASSENGER_PATH, "r", encoding="utf-8") as f:
+            passengers = json.load(f)
+        for user_id, user_data in passengers.items():
+            order = user_data.get("order")
+            if order and order.get("date") == today_str and order.get("status") != "done":
+                text += f"🧍‍♂️ <b>Йўловчи:</b> {user_data.get('phone', 'Номаълум')}\n"
+                text += f"📍 {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                text += f"⏰ {order.get('time')} | 💰 {order.get('price', '—')} сўм\n\n"
+
+        # Ҳайдовчи ордерлари
+        with open(DRIVER_PATH, "r", encoding="utf-8") as f:
+            drivers = json.load(f)
+        for user_id, user_data in drivers.items():
+            order = user_data.get("order")
+            if order and order.get("date") == today_str and order.get("status") != "done":
+                profile = user_data.get("profile", {})
+                text += f"🚗 <b>Ҳайдовчи:</b> {profile.get('name', 'Номаълум')}\n"
+                text += f"📍 {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                text += f"⏰ {order.get('time')} | 🚘 {profile.get('car_model', '')} ({profile.get('car_number', '')})\n\n"
+
+        if text.strip() == "📅 <b>Бугунги ордерлар</b>":
+            text = "❌ Бугунги ордерлар топилмади."
+
+        await callback.message.edit_text(text, parse_mode="HTML")
+
+    except Exception as e:
+        print(f"❌ Бугунги ордерлар хато: {e}")
+        await callback.answer("❌ Хатолик юз берди.")
+
 @router.callback_query(lambda c: c.data.startswith("order_details_"))
 async def show_order_details(callback: CallbackQuery):
     try:
@@ -1289,28 +1307,29 @@ async def show_order_details(callback: CallbackQuery):
             await callback.answer("❌ Ордер топилмади ёки янгиланган.")
             return
 
-        # 👤 Фойдаланувчи маълумотлари
         profile = user.get("profile", {})
         phone = user.get("phone", "Номаълум")
+        name = profile.get("name") if user_type == "driver" else phone  # Йўловчида profile йўқ
 
         text = f"📦 <b>Ордер №{order_number}</b>\n"
-        text += f"👤 <b>Фойдаланувчи:</b> {profile.get('name', 'Номаълум')}\n"
+        text += f"👤 <b>Фойдаланувчи:</b> {name}\n"
         text += f"📞 <b>Телефон:</b> {phone}\n"
         text += f"🧑‍💼 <b>Тури:</b> {user_type.capitalize()}\n\n"
 
-        text += f"📍 <b>Йўналиш:</b> {order.get('from_region', '')}, {order.get('from_district', '')} ➝ {order.get('to_region', '')}, {order.get('to_district', '')}\n"
-        text += f"📅 <b>Сана:</b> {order.get('date', '—')} ⏰ {order.get('time', '—')}\n"
-        text += f"💰 <b>Нарх:</b> {order.get('price', '—')} сўм\n"
-        text += f"📊 <b>Статус:</b> {order.get('status', '—')}\n\n"
+        text += (
+            f"📍 <b>Йўналиш:</b> {order.get('from_region', '')}, {order.get('from_district', '')} ➝ "
+            f"{order.get('to_region', '')}, {order.get('to_district', '')}\n"
+            f"📅 <b>Сана:</b> {order.get('date', '—')} ⏰ {order.get('time', '—')}\n"
+            f"💰 <b>Нарх:</b> {order.get('price', '—')} сўм\n"
+            f"📊 <b>Статус:</b> {order.get('status', '—')}\n\n"
+        )
 
-        # 🕓 Вақт белгиларини қўшамиз
         timestamps = order.get("status_timestamps", {})
         if timestamps:
             text += "🕓 <b>Вақтлар:</b>\n"
             for key, value in timestamps.items():
                 text += f"▪️ {key.capitalize()}: {value}\n"
 
-        # 🔙 Орқага тугмаси
         back_button = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔙 Орқага", callback_data=f"back_to_orders_{user_type}")]
         ])
@@ -1328,7 +1347,6 @@ async def back_to_orders(callback: CallbackQuery):
 
 async def show_recent_orders(message, user_type):
     try:
-        # Ордерлар ёки ҳайдовчилар маълумотларини юклаймиз
         if user_type == "passenger":
             file_path = PASSENGER_PATH
         elif user_type == "driver":
@@ -1341,27 +1359,191 @@ async def show_recent_orders(message, user_type):
             users_data = json.load(file)
 
         orders_text = "📝 Ордерлар рўйхати:\n\n"
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[])
 
         for user_id, user_data in users_data.items():
+            order = user_data.get("order", {})
+            if not order or order.get("status") == "done":
+                continue
+
             if user_type == "passenger":
-                order = user_data.get("order", {})
-                if order and order.get("status") != "done":  # Ордер фақат "done" эмас бўлса кўрсатилади
-                    orders_text += f"🧍‍♂️ Йўловчи: {user_data['profile']['name']}\n"
-                    orders_text += f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
-                    orders_text += f"💰 Нарх: {order.get('price', 'Номаълум')} сўм\n"
-                    orders_text += f"🕓 Вақт: {order.get('date')} {order.get('time')}\n\n"
+                phone = user_data.get("phone", "Номаълум")
+                orders_text += (
+                    f"🧍‍♂️ Телефон: {phone}\n"
+                    f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                    f"💰 Нарх: {order.get('price', 'Номаълум')} сўм\n"
+                    f"🕓 Вақт: {order.get('date')} {order.get('time')}\n\n"
+                )
             elif user_type == "driver":
-                order = user_data.get("order", {})
-                if order and order.get("status") != "done":  # Ордер фақат "done" эмас бўлса кўрсатилади
-                    orders_text += f"🚗 Ҳайдовчи: {user_data['profile']['name']}\n"
-                    orders_text += f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
-                    orders_text += f"📅 Сана: {order.get('date')} {order.get('time')}\n\n"
+                profile = user_data.get("profile", {})
+                name = profile.get("name", "Номаълум")
+                orders_text += (
+                    f"🚗 Ҳайдовчи: {name}\n"
+                    f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                    f"📅 Сана: {order.get('date')} {order.get('time')}\n\n"
+                )
+
+            # Ордер тафсилоти тугмаси
+            #order_number = order.get('order_number')
+            #if order_number is None:
+            #    continue
+
+            #keyboard.inline_keyboard.append([
+            #    InlineKeyboardButton(
+            #        text=f"📦 Ордер №{order_number}",
+            #        callback_data=f"order_details_{user_type}_{user_id}_{order.get('order_number')}"
+            #    )
+            #])
 
         if orders_text == "📝 Ордерлар рўйхати:\n\n":
             orders_text = "❌ Ордерлар топилмади."
+            keyboard = None
 
-        await message.answer(orders_text)
+        await message.answer(orders_text, reply_markup=keyboard)
 
     except Exception as e:
         print(f"❌ Хатолик: {e}")
         await message.answer("❌ Ордерлар кўрсатилмади.")
+
+
+def get_bot_statistics():
+    try:
+        # Ҳамма фойдаланувчиларни юклаймиз
+        users = load_users()
+        
+        with open(DRIVER_PATH, "r", encoding="utf-8") as f:
+            drivers = json.load(f)
+        with open(PASSENGER_PATH, "r", encoding="utf-8") as f:
+            passengers = json.load(f)
+
+        total_drivers = len(drivers)
+        total_passengers = len(passengers)
+
+        total_users = len(users)
+
+        # Янги фойдаланувчилар сонини ҳисоблаш
+        new_users_count = sum(1 for u in users.values() if u.get("status") == "new_user")
+
+        total_orders_drivers = 0
+        active_orders_drivers = 0
+        for d in drivers.values():
+            order = d.get("order")
+            if order:
+                total_orders_drivers += 1
+                if order.get("status") != "done":
+                    active_orders_drivers += 1
+
+        total_orders_passengers = 0
+        active_orders_passengers = 0
+        for p in passengers.values():
+            order = p.get("order")
+            if order:
+                total_orders_passengers += 1
+                if order.get("status") != "done":
+                    active_orders_passengers += 1
+
+        total_orders = total_orders_drivers + total_orders_passengers
+        active_orders = active_orders_drivers + active_orders_passengers
+
+        return {
+            "total_users": total_users,
+            "total_orders": total_orders,
+            "active_orders": active_orders,
+            "total_drivers": total_drivers,
+            "total_passengers": total_passengers,
+            "total_orders_drivers": total_orders_drivers,
+            "active_orders_drivers": active_orders_drivers,
+            "total_orders_passengers": total_orders_passengers,
+            "active_orders_passengers": active_orders_passengers,
+            "new_users": new_users_count
+        }
+
+    except Exception as e:
+        print(f"❌ Статистика хато: {e}")
+        return {
+            "total_users": 0,
+            "total_orders": 0,
+            "active_orders": 0,
+            "total_drivers": 0,
+            "total_passengers": 0,
+            "total_orders_drivers": 0,
+            "active_orders_drivers": 0,
+            "total_orders_passengers": 0,
+            "active_orders_passengers": 0,
+            "new_users": 0
+        }
+
+# "📋 Статистика"
+@router.callback_query(F.data == "statistika")
+async def show_statistics(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    # 📥 Барча маълумотларни юклаш
+    stats = get_bot_statistics()
+    users = load_users()
+    file_path = create_statistics_chart(stats)
+
+    # 📊 Фойдаланувчи турлари бўйича ҳисоблаш
+    new_users = sum(1 for u in users.values() if u.get("status") == "new_user")
+    total_drivers = sum(1 for u in users.values() if u.get("status") == "driver")
+    total_passengers = sum(1 for u in users.values() if u.get("status") == "passenger")
+
+
+    text = (
+        "<b>📊 Бот статистикаси</b>\n\n"
+        f"👤 <b>Фойдаланувчилар сони:</b> {stats['total_users']} та\n\n"
+
+        f"👤 <b>Янги фойдаланувчилар:</b> {new_users} та\n"
+        f"🚗 Ҳайдовчилар: {total_drivers} та\n"
+        f"🧍‍♂️ Йўловчилар: {total_passengers} та\n\n"
+
+        f"📅 <b>Буюртмалар сони:</b> {stats['total_orders']} та\n"
+        f"✅ Якунланган: {stats['total_orders'] - stats['active_orders']} та\n"
+        f"⏳ Жорий: {stats['active_orders']} та\n\n"
+        
+        f"🚗 <b>Ҳайдовчилар:</b> {stats['total_drivers']} та\n"
+        f"📦 Буюртмалар: {stats['total_orders_drivers']} та\n"
+        f"⏳ Жараёнда: {stats['active_orders_drivers']} та\n\n"
+        
+        f"🧍‍♂️ <b>Йўловчилар:</b> {stats['total_passengers']} та\n"
+        f"📦 Буюртмалар: {stats['total_orders_passengers']} та\n"
+        f"⏳ Жараёнда: {stats['active_orders_passengers']} та"
+    )
+
+    await callback_query.message.answer(text, parse_mode="HTML")
+
+    # 📈 Диаграммани юбориш
+    #try:
+    #    file_path = create_statistics_chart(stats)
+    #    with open(file_path, "rb") as photo:
+    #        await callback_query.message.answer_photo(photo, caption="📊 Диаграмма")
+    #except Exception as e:
+    #    logging.error(f"Диаграмма яратишда хатолик: {e}")
+    if file_path:
+        chart = FSInputFile(file_path)
+        await bot.send_photo(callback_query.from_user.id, photo=chart, caption="📊 Диаграмма")
+
+def create_statistics_chart(stats):
+    try:
+        labels = ['Буюртмалар', 'Йўловчилар', 'Ҳайдовчилар']
+        values = [stats['total_orders'], stats['total_passengers'], stats['total_drivers']]
+        colors = ['#4caf50', '#2196f3', '#ff9800']
+
+        plt.figure(figsize=(7, 4))
+        bars = plt.bar(labels, values, color=colors)
+        plt.title("Бот статистикаси", fontsize=14)
+        plt.ylabel("Сони")
+
+        # Бар устидан рақамларни кўрсатиш
+        for bar in bars:
+            yval = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, int(yval), ha='center', va='bottom')
+
+        plt.tight_layout()
+        file_path = "chart.png"
+        plt.savefig(file_path)
+        plt.close()
+        return file_path
+    except Exception as e:
+        logging.error(f"Диаграмма яратишда хатолик: {e}")
+        return None
