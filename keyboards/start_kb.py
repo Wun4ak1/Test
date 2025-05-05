@@ -36,9 +36,9 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
     # Ҳам driver, ҳам passenger учун умумий тугмалар
     if user_status in ("driver", "passenger") or (user_status and user_status.startswith("location_")):
         add_button("👥 Дўст таклиф қилиш", "invite_friends")
-        add_button("📊 Менинг статистикам", "my_stats")
+        add_button("📊 Менинг таклифларим", "my_invites")
         #add_button("📋 Буюртмаларим тарихи", "view_order_history")
-        add_button("♻️ Ролни ўзгартириш", "change_user_status")
+        #add_button("♻️ Ролни ўзгартириш", "change_user_status")
 
 
     # Барча фойдаланувчилар учун умумий тугма

@@ -30,4 +30,6 @@ except Exception as e:
     print(f"ADMINS парслашда хатолик: {e}")
     ADMINS = set()
 
+INVITE_BONUS = int(os.getenv("INVITE_BONUS", 2000))
+
 OTHER_SECRET = os.getenv("OTHER_SECRET")

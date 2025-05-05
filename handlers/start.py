@@ -13,7 +13,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from config import TOKEN
+from config import TOKEN, INVITE_BONUS
 
 ADMINS = os.getenv("ADMINS")
 if ADMINS:
@@ -23,10 +23,12 @@ else:
 
 from states import DriverInfo, AdminStates
 from keyboards.start_kb import start_kb
+from keyboards.inline import invite_actions_kb
 from utils import (
-    load_json, save_json, load_users, save_user_status, recommend_multiple_drivers_to_passenger,
-    get_passenger_order, send_or_edit_last, load_passenger, get_driver_order, save_passenger_order, send_or_edit_text,
-    load_drivers, save_driver, create_departure_confirmation_keyboard,
+    load_json, save_json, load_users, save_user_status, 
+    recommend_multiple_drivers_to_passenger, edit_selected_driver_message, delete_unselected_driver_messages, 
+    get_passenger_order, load_passenger, send_or_edit_text, send_or_edit_last, 
+    load_drivers, save_driver, load_passenger, save_passenger, create_departure_confirmation_keyboard,
     USER_STATUS_PATH, PASSENGER_PATH, DRIVER_PATH
 )
 
@@ -233,6 +235,29 @@ async def process_driver_choice(callback_query: CallbackQuery):
     passengers[passenger_id]["order"] = order
     save_json(PASSENGER_PATH, passengers)
 
+    # ✅ Танланган тугмани "✅ Танланди" деб ўзгартириш
+    keyboard = callback_query.message.reply_markup
+    if keyboard:
+        new_inline_keyboard = []
+
+        for row in keyboard.inline_keyboard:
+            new_row = []
+            for btn in row:
+                if btn.callback_data == f"choose_driver_{driver_id}":
+                    # 🎯 Фақат танланган тугмани "Танланди" қиламиз
+                    new_inline_keyboard.append([
+                        InlineKeyboardButton(text="✅ Танланди", callback_data="chosen_disabled"),
+                        InlineKeyboardButton(text="🔁 Навбатдаги ҳайдовчилар", callback_data="show_next_drivers")
+                    ])
+                    break  # Танланган тугмадан кейин бошқа тугмалар керак эмас
+
+        await callback_query.message.edit_reply_markup(
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=new_inline_keyboard)
+        )
+
+    # 🔴 Танланмаган ҳайдовчиларга юборилган хабарларни ўчириш
+    await delete_unselected_driver_messages(passenger_id, driver_id, bot)
+
     # 👤 Йўловчи маълумотлари
     passenger_name = callback_query.from_user.full_name
     price = order.get("price", -1)
@@ -253,7 +278,7 @@ async def process_driver_choice(callback_query: CallbackQuery):
     ]])
 
     # ✅ Йўловчига тасдиқ хабар
-    await callback_query.message.answer("✅ Ҳайдовчига хабар юборилди, агар 5 дақиқада жавоб бермаса, навбатдаги ҳайдовчига юборилади.")
+    #await callback_query.message.answer("✅ Ҳайдовчига хабар юборилди, агар 10 дақиқада жавоб бермаса, навбатдаги ҳайдовчилар юборилади.")
     await bot.send_message(driver_id, msg_to_driver, reply_markup=accept_btn)
 
     # Callback’га жавоб бериш (тугмани "pending" ҳолатдан чиқариш)
@@ -263,8 +288,59 @@ async def process_driver_choice(callback_query: CallbackQuery):
     task = create_task(wait_for_driver_response(passenger_id, driver_id))
     pending_timers[passenger_id] = task
 
+#@dp.callback_query_handler(lambda c: c.data == "chosen_disabled")
+@router.callback_query(F.data == "chosen_disabled")
+async def chosen_disabled_callback(callback_query: types.CallbackQuery):
+    await callback_query.answer("Бу ҳайдовчи танланган", show_alert=False)
+
+@router.callback_query(F.data == "show_next_drivers")
+async def show_next_drivers_callback(callback: CallbackQuery, bot: Bot):
+    passenger_id = str(callback.from_user.id)
+    try:
+        # ⛔ Таймерни бекор қилиш
+        task = pending_timers.pop(passenger_id, None)
+        if task:
+            task.cancel()
+
+        # 🗃 Йўловчи маълумотини юклаймиз
+        passengers = load_json(PASSENGER_PATH)
+        passenger = passengers.get(passenger_id)
+        if not passenger:
+            return
+
+        # 🚶‍♂️ Йўловчи ордери
+        order = passenger.get("order", {})
+        if not order:
+            return
+
+        # 🔁 exclude_driver_ids тайёрлаш
+        excluded_ids = order.get("excluded_driver_ids", [])
+        chosen_driver_id = order.get("chosen_driver_id")
+        if chosen_driver_id:
+            excluded_ids.append(chosen_driver_id)
+            order["excluded_driver_ids"] = list(set(excluded_ids))  # Уникаллаштириш
+            order["chosen_driver_id"] = None  # Бекор қилиш
+
+        # 📝 Сақлаш
+        passengers[passenger_id]["order"] = order
+        save_json(PASSENGER_PATH, passengers)
+
+        # 🔁 Яна ҳайдовчилар тавсия қилиш
+        await recommend_multiple_drivers_to_passenger(
+            passenger_id=passenger_id,
+            user_order=order,
+            bot=bot
+        )
+
+        # ✅ Callback жавобини ёпиш
+        await callback.answer()
+
+    except Exception as e:
+        print(f"❌ show_next_drivers хатолик: {e}")
+        await bot.send_message(passenger_id, "❌ Хатолик юз берди. Кейинроқ қайта уриниб кўринг.")
+
 async def wait_for_driver_response(passenger_id, driver_id):
-    await sleep(300)  # 5 дақиқа = 300 секунд
+    await sleep(600)  # 5 дақиқа = 300 секунд
 
     passengers = load_json(PASSENGER_PATH)
     passenger = passengers.get(passenger_id)
@@ -276,10 +352,18 @@ async def wait_for_driver_response(passenger_id, driver_id):
     
     # Агар йўловчи тасдиқ олмаган бўлса
     if order.get("chosen_driver_id") == driver_id:
-        order["chosen_driver_id"] = None  # Танловни бекор қилиш
+        # 🟡 Танланмаган ҳайдовчилар рўйхатига қўшамиз
+        excluded = order.get("excluded_driver_ids", [])
+        if driver_id not in excluded:
+            excluded.append(driver_id)
+        order["excluded_driver_ids"] = excluded
 
+        # ❌ Танловни бекор қиламиз
+        order["chosen_driver_id"] = None
+
+        # 🗂 Сақлаш
         passengers[passenger_id]["order"] = order
-        passengers = load_json(PASSENGER_PATH)
+        save_json(PASSENGER_PATH, passengers)
 
         # ✅ Кейинги ҳайдовчига тавсия қилиш
         await recommend_multiple_drivers_to_passenger(
@@ -301,6 +385,12 @@ async def process_accept_passenger(callback_query: CallbackQuery):
 
     if not driver or not passenger:
         await callback_query.answer("Маълумот топилмади.")
+        return
+
+    # ❗ Танланган ҳайдовчи текширилади
+    chosen_driver_id = passenger.get("order", {}).get("chosen_driver_id")
+    if chosen_driver_id != driver_id:
+        await callback_query.answer("❌ Бу йўловчи сиз томонидан танланмаган. Ёки қабул қилишга кеч қолдингиз.", show_alert=True)
         return
 
     # 💸 Баланс/бонусдан 10% ҳисоблаймиз ва ушлаб қоламиз
@@ -777,26 +867,85 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
     # 📌 Referral'ни қайд этиш (фақат биринчи марта кирганда)
     if referral_id and referral_id != user_id:
         referrer_id = referral_id
-        # Агар бу фойдаланувчи аввал рўйхатда бўлмаса
-        if user_id not in status_data:
+        is_first_time = user_id not in status_data
+        #bot_username = (await callback_query.bot.me()).username
+
+        if is_first_time:
             status_data[user_id] = {
                 "status": "new_user",
-                  "referrer": referrer_id,  # Биринчи таклиф қилган одам
-                  "first_name": message.from_user.first_name
+                "referrer": referrer_id,
+                "first_name": message.from_user.first_name
             }
-            # Referrer'нинг invited_users рўйхатига қўшамиз
-            if referrer_id not in status_data:
-                status_data[referrer_id] = {"status": "new_user", "invited_users": []}
+
+            # ✅ Админга хабар юбориш
+            full_name = message.from_user.full_name
+            username = message.from_user.username or "—"
+            for admin_id in ADMINS:
+                try:
+                    await bot.send_message(
+                        admin_id,
+                        text=(
+                            f"🆕 <b>Янги фойдаланувчи ботга кирди</b>\n\n"
+                            f"👤 Исм: {full_name}\n"
+                            f"🔗 Username: @{username if username != '—' else 'йўқ'}\n"
+                            f"🆔 ID: <code>{user_id}</code>"
+                        ),
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"❌ Админга хабар юборишда хато: {e}")
+
+            # Referrer маълумотларини янгилаш
+            status_data.setdefault(referrer_id, {"status": "new_user"})
             status_data[referrer_id].setdefault("invited_users", [])
             if user_id not in status_data[referrer_id]["invited_users"]:
                 status_data[referrer_id]["invited_users"].append(user_id)
             save_json(USER_STATUS_PATH, status_data)
+
+            # ✅ BONUS бериш
+            referrer_data = load_drivers().get(referrer_id)
+            if referrer_data:
+                referrer_data.setdefault("bonus", 0)
+                referrer_data["bonus"] += INVITE_BONUS
+                save_driver({**load_drivers(), referrer_id: referrer_data})
+
+                invited_name = message.from_user.first_name
+                text = (
+                    f"🎉 Сиз таклиф қилган {invited_name} ботдан фойдалана бошлади!\n\n"
+                    f"Сизга {INVITE_BONUS} сўм бонус тақдим этилди.\n\n"
+                    "Яна дўстларингизни таклиф қилинг ва кўпроқ бонуслар тўпланг!"
+                )
+                await bot.send_message(
+                    referrer_id,
+                    text, 
+                    reply_markup=await invite_actions_kb(bot, referrer_id)
+                )
+
+            else:
+                # Рефер йўловчи бўлса
+                passengers = load_passenger()
+                if referrer_id in passengers:
+                    passengers[referrer_id].setdefault("bonus", 0)
+                    passengers[referrer_id]["bonus"] += INVITE_BONUS // 2
+                    save_passenger(passengers)
+
+                    invited_name = message.from_user.first_name
+
+                    await bot.send_message(
+                        referrer_id, 
+                        text=(
+                            f"🎉 Сиз таклиф қилган {invited_name} ботдан фойдалана бошлади!\n\n"
+                            f"Сизга {INVITE_BONUS // 2} сўм бонус тақдим этилди.\n\n"
+                            "Яна кўпроқ бонус олиш учун дўстларингизни таклиф қилинг!"
+                        ),
+                        reply_markup=await invite_actions_kb(bot, referrer_id)
+                    )
+
         else:
-            # Агар аллақачон базада бўлса, аммо first_name йўқ бўлса, қўшамиз
             if "first_name" not in status_data[user_id]:
                 status_data[user_id]["first_name"] = message.from_user.first_name
                 save_json(USER_STATUS_PATH, status_data)
-    
+
     else:
         # Агар referral бўлмаса ҳам, first_name сақлаб қўйиш
         if user_id not in status_data:
@@ -805,12 +954,25 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
                 "first_name": message.from_user.first_name
             }
             save_json(USER_STATUS_PATH, status_data)
+
+            # 🔔 Админга хабар
+            for admin_id in ADMINS:
+                await bot.send_message(
+                    admin_id,
+                    text=(
+                        f"🆕 <b>Янги фойдаланувчи ботга кирди</b>\n\n"
+                        f"👤 Исм: {message.from_user.full_name}\n"
+                        f"🔗 Username: @{message.from_user.username or 'йўқ'}\n"
+                        f"🆔 ID: <code>{user_id}</code>"
+                    ),
+                    parse_mode="HTML"
+                )
         else:
             if "first_name" not in status_data[user_id]:
                 status_data[user_id]["first_name"] = message.from_user.first_name
                 save_json(USER_STATUS_PATH, status_data)
 
-    # ➡️ Кейинги қисм: мавжуд кодингизни сақлаймиз
+    # ➡️ Кейинги қисм:
     if user_status == "new_user":
         text = "🤖 Ботга хуш келибсиз!\nКимлигингизни танланг:"
         await send_or_edit_last(user_id, state, bot, text, start_kb(int(user_id)))
@@ -832,8 +994,8 @@ async def invite_friends_callback(callback_query: types.CallbackQuery, bot: Bot)
     await callback_query.message.answer(text)
     await callback_query.answer()
 
-@router.callback_query(F.data == "my_stats")
-async def show_my_stats(callback_query: types.CallbackQuery):
+@router.callback_query(F.data == "my_invites")
+async def show_my_invites(callback_query: types.CallbackQuery):
     user_id = str(callback_query.from_user.id)
     
     # 📁 Файлдан статуслар оламиз
@@ -856,7 +1018,7 @@ async def show_my_stats(callback_query: types.CallbackQuery):
 
     # 👥 Агар таклиф қилинганлар бор бўлса, уларнинг исмларини чиқарамиз
     if invited_users:
-        text += "\n🧑‍🤝‍🧑 Таклиф қилинган дўстлар:\n"
+        text += "\n🧑‍🤝‍🧑 Таклиф қилинганлар:\n"
         for idx, invited_id in enumerate(invited_users, 1):
             invited_info = status_data.get(str(invited_id), {})
             first_name = invited_info.get("first_name", "Номаълум")
@@ -934,7 +1096,7 @@ def get_bot_statistics():
 async def show_statistics(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
     # Сизнинг статистика логикаингиз
-    await callback_query.message.answer("Ҳайдовчи статистикаси тайёрланмоқда...")
+    #await callback_query.message.answer("Ҳайдовчи статистикаси тайёрланмоқда...")
     stats = get_bot_statistics()
 
     text = (
@@ -985,7 +1147,7 @@ async def show_drivers_list(callback_query: CallbackQuery):
 
 @router.callback_query(lambda c: c.data in [
     "driver", "passenger", "change_user_status",
-    "admin", "upload_files"
+    "admin", "upload_files", "view_order", "view_order_passenger", "view_order_driver"
 ])
 async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
@@ -1017,13 +1179,46 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
             [InlineKeyboardButton(text="🚘 Ҳайдовчилар рўйхати", callback_data="show_drivers_list")],
+            [InlineKeyboardButton(text="👥 Йўловчилар рўйхати", callback_data="show_passengers_list")],
+            [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
+            [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")],
             [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
 
+        # Ордерлар турини танлаш тугмаси
+        await callback_query.message.edit_text(
+            "👮 Админ панел!\nКўрсатишни хохлаган ордер турини танланг:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
+                [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")]
+            ])
+        )
+
+    
         #await callback_query.message.answer("👮 Админ панел!", reply_markup=keyboard)
         await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
-    
+    elif data == "view_order":
+        if user_id not in ADMINS:
+            return
+        # Админ учун охирги ордерларни кўрсатиш
+        await show_recent_orders(callback_query.message, user_type="driver")  # ёки "passenger" керак бўлса
+        #await show_recent_orders(callback_query.message, user_type="passenger")  # Йўловчиларнинг ордерларини кўрсатиш
+        # Агар ҳайдовчиларнинг ордерларини кўрсатиш керак бўлса, "driver"ни ўрнатинг:
+        # await show_recent_orders(callback_query.message, user_type="driver")
+
+    elif data == "view_order_passenger":
+        if user_id not in ADMINS:
+            return
+        # Йўловчи ордерларини кўрсатиш
+        await show_recent_orders(callback_query.message, user_type="passenger")
+
+    elif data == "view_order_driver":
+        if user_id not in ADMINS:
+            return
+        # Ҳайдовчи ордерларини кўрсатиш
+        await show_recent_orders(callback_query.message, user_type="driver")
+
     elif data == "upload_files":  # Агар "Файлларни юклаш" тугмаси босилса
         await send_json_files(callback_query.message)
 
@@ -1045,6 +1240,14 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 #    await message.answer("👮 Админ панел!", reply_markup=start_kb(user_id))
 #    #await message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
 
+
+@router.message(Command("change_status"))
+@router.message(Command("change_role"))  # иккита вариант
+async def change_status_command(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    save_user_status(user_id, "new_user")  # статусни қайта тиклаймиз
+    await message.answer("📋 Ролни қайта танланг:", reply_markup=start_kb(user_id))
+
 from aiogram.types.input_file import FSInputFile
 
 async def send_json_files(message):
@@ -1064,3 +1267,101 @@ async def send_json_files(message):
     except Exception as e:
         logging.error(f"Файлларни юклашда хатолик: {e}")
         await message.answer("Файлларни юклашда хатолик юз берди.")
+
+@router.callback_query(lambda c: c.data.startswith("order_details_"))
+async def show_order_details(callback: CallbackQuery):
+    try:
+        _, user_type, user_id, order_number = callback.data.split("_", 3)
+        user_id = str(user_id)
+        order_number = int(order_number)
+
+        file_path = DRIVER_PATH if user_type == "driver" else PASSENGER_PATH
+        with open(file_path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        user = data.get(user_id)
+        if not user:
+            await callback.answer("❌ Фойдаланувчи топилмади.")
+            return
+
+        order = user.get("order")
+        if not order or order.get("order_number") != order_number:
+            await callback.answer("❌ Ордер топилмади ёки янгиланган.")
+            return
+
+        # 👤 Фойдаланувчи маълумотлари
+        profile = user.get("profile", {})
+        phone = user.get("phone", "Номаълум")
+
+        text = f"📦 <b>Ордер №{order_number}</b>\n"
+        text += f"👤 <b>Фойдаланувчи:</b> {profile.get('name', 'Номаълум')}\n"
+        text += f"📞 <b>Телефон:</b> {phone}\n"
+        text += f"🧑‍💼 <b>Тури:</b> {user_type.capitalize()}\n\n"
+
+        text += f"📍 <b>Йўналиш:</b> {order.get('from_region', '')}, {order.get('from_district', '')} ➝ {order.get('to_region', '')}, {order.get('to_district', '')}\n"
+        text += f"📅 <b>Сана:</b> {order.get('date', '—')} ⏰ {order.get('time', '—')}\n"
+        text += f"💰 <b>Нарх:</b> {order.get('price', '—')} сўм\n"
+        text += f"📊 <b>Статус:</b> {order.get('status', '—')}\n\n"
+
+        # 🕓 Вақт белгиларини қўшамиз
+        timestamps = order.get("status_timestamps", {})
+        if timestamps:
+            text += "🕓 <b>Вақтлар:</b>\n"
+            for key, value in timestamps.items():
+                text += f"▪️ {key.capitalize()}: {value}\n"
+
+        # 🔙 Орқага тугмаси
+        back_button = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Орқага", callback_data=f"back_to_orders_{user_type}")]
+        ])
+
+        await callback.message.edit_text(text, reply_markup=back_button, parse_mode="HTML")
+
+    except Exception as e:
+        print(f"❌ Падробно хатолиги: {e}")
+        await callback.answer("❌ Хатолик юз берди.")
+
+@router.callback_query(lambda c: c.data.startswith("back_to_orders_"))
+async def back_to_orders(callback: CallbackQuery):
+    user_type = callback.data.split("_")[-1]
+    await show_recent_orders(callback.message, user_type=user_type)
+
+async def show_recent_orders(message, user_type):
+    try:
+        # Ордерлар ёки ҳайдовчилар маълумотларини юклаймиз
+        if user_type == "passenger":
+            file_path = PASSENGER_PATH
+        elif user_type == "driver":
+            file_path = DRIVER_PATH
+        else:
+            await message.answer("❌ Нотўғри фойдаланувчи тури.")
+            return
+
+        with open(file_path, 'r', encoding='utf-8') as file:
+            users_data = json.load(file)
+
+        orders_text = "📝 Ордерлар рўйхати:\n\n"
+
+        for user_id, user_data in users_data.items():
+            if user_type == "passenger":
+                order = user_data.get("order", {})
+                if order and order.get("status") != "done":  # Ордер фақат "done" эмас бўлса кўрсатилади
+                    orders_text += f"🧍‍♂️ Йўловчи: {user_data['profile']['name']}\n"
+                    orders_text += f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                    orders_text += f"💰 Нарх: {order.get('price', 'Номаълум')} сўм\n"
+                    orders_text += f"🕓 Вақт: {order.get('date')} {order.get('time')}\n\n"
+            elif user_type == "driver":
+                order = user_data.get("order", {})
+                if order and order.get("status") != "done":  # Ордер фақат "done" эмас бўлса кўрсатилади
+                    orders_text += f"🚗 Ҳайдовчи: {user_data['profile']['name']}\n"
+                    orders_text += f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
+                    orders_text += f"📅 Сана: {order.get('date')} {order.get('time')}\n\n"
+
+        if orders_text == "📝 Ордерлар рўйхати:\n\n":
+            orders_text = "❌ Ордерлар топилмади."
+
+        await message.answer(orders_text)
+
+    except Exception as e:
+        print(f"❌ Хатолик: {e}")
+        await message.answer("❌ Ордерлар кўрсатилмади.")

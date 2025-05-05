@@ -35,7 +35,7 @@
             "to_district": "Ангрен",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-02",
+            "date": "2025-05-05",
             "time": "06:00 - 11:59",
             "order_number": 1,
             "status_timestamps": {
@@ -64,7 +64,7 @@
             "to_district": "Юнусобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-04",
+            "date": "2025-05-05",
             "time": "16:00 - 19:59",
             "order_number": 1,
             "status_timestamps": {
@@ -97,7 +97,7 @@
             "car_number": "50Q029DB",
             "seat_count": "4"
         },
-        "rating": 1.0,
+        "rating": 0,
         "approved": true,
         "balance": 40000,
         "bonus": 0,
@@ -108,7 +108,7 @@
             "to_district": "Яшнобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-04",
+            "date": "2025-05-05",
             "time": "06:00 - 11:59",
             "order_number": 1,
             "status_timestamps": {
@@ -128,7 +128,7 @@
         },
         "rating": 0,
         "order": {
-            "status": "new",
+            "status": "draft",
             "available_seats": 4,
             "to_region": "Тошкент в.",
             "to_district": "Оҳангарон",
@@ -143,7 +143,7 @@
         },
         "approved": true,
         "balance": 0,
-        "bonus": 0
+        "bonus": 2000
     },
     "7233540342": {
         "id": "7233540342",
@@ -158,13 +158,13 @@
         "rating": 0,
         "approved": true,
         "order": {
-            "status": "new",
+            "status": "draft",
             "available_seats": 4,
             "to_region": "Тошкент ш.",
             "to_district": "Юнусобод",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-04",
+            "date": "2025-05-05",
             "time": "12:00 - 15:59",
             "order_number": 1,
             "status_timestamps": {
@@ -172,6 +172,6 @@
             }
         },
         "balance": 0,
-        "bonus": 0
+        "bonus": 4000
     }
 }

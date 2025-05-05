@@ -15,6 +15,11 @@ TOKEN = os.getenv("TOKEN")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from location import calculate_price
 
+ADMINS = os.getenv("ADMINS")
+if ADMINS:
+    ADMINS = {int(i) for i in ADMINS.split(",")}
+else:
+    ADMINS = set()
 # Ботни яратиш
 bot = Bot(token=TOKEN)
 
@@ -353,6 +358,41 @@ async def save_order(user_id, user_type, bot):
                     bot=bot
                 )
 
+    # 🛂 Админга ордер ҳақида хабар бериш
+    order_info_text = (
+        f"📥 Янги {'йўловчи' if user_type == 'passenger' else 'ҳайдовчи'} ордер!\n\n"
+        f"👤 ID: {user_id}\n"
+        f"📍 Йўналиш: {new_order.get('from_district')} ➝ {new_order.get('to_district')}\n"
+        f"📅 Сана: {new_order.get('date')}\n"
+        f"⏰ Вақт: {new_order.get('time')}\n"
+    )
+
+    # 🎛 Падробно тугмаси
+    details_button = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="ℹ️ Падробно",
+                    callback_data=f"order_details_{user_type}_{user_id}_{order_number}"
+                )
+            ]
+        ]
+    )
+
+    if user_type == "passenger":
+        order_info_text += f"💰 Нарх: {new_order.get('price', 'Номаълум')} сўм\n"
+
+    try:
+        await bot.send_message(
+            chat_id=ADMINS,
+            text=order_info_text,
+            reply_markup=details_button
+        )
+
+    except Exception as e:
+        print(f"❌ Админга хабар юборилмади: {e}")
+
+
     return new_order
 
 def get_order(user_id, user_type):
@@ -519,6 +559,8 @@ def recommend_driver(user_order):
     except FileNotFoundError:
         return None
 
+sent_recommendations = {}  # 🔐 Глобал сўзловчи, бошида эълон қилинади
+
 async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot):
     try:
         # 🛒 Ҳайдовчилар маълумотларини юклаймиз
@@ -575,6 +617,11 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
         if chosen_driver_id:
             matched_drivers = [driver for driver in matched_drivers if driver["id"] != chosen_driver_id]
 
+        # ❌ Олдин танланиб кейин бекор қилинган ҳайдовчиларни ўчириш
+        excluded_ids = user_order.get("excluded_driver_ids", [])
+        if excluded_ids:
+            matched_drivers = [driver for driver in matched_drivers if driver["id"] not in excluded_ids]
+
         if not matched_drivers:
             await bot.send_message(passenger_id, "⏳ Танланган ҳайдовчи билан боғланиб бўлмади.\nБошқа ҳайдовчилар қидирилмоқда.")
             return
@@ -598,9 +645,6 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
         # 🧮 Ҳар бир ҳайдовчига total_funds қўшамиз
         for d in invited_drivers + new_drivers + experienced_drivers:
             d["total_funds"] = d.get("balance", 0) + d.get("bonus", 0)
-
-        # 🔢 Бошланғич тартибдаги ҳайдовчилар
-        all_sorted = invited_drivers + new_drivers + experienced_drivers
 
         # 🧠 1. Етарли маблағлилар (тартибни сақлаб)
         enough_invited = [d for d in invited_drivers if d["total_funds"] >= required_amount]
@@ -629,6 +673,8 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
         # 📤 Ҳар бирини йўловчига қайта юбориш
         text = f"🔄 Танланган ҳайдовчи билан боғланиб бўлмади.\nСизга бошқа мос {len(matched_drivers)} та ҳайдовчи топилди:\n\n"
 
+        sent_recommendations[passenger_id] = []  # 🌐 Хабарлар рўйхати
+
         for i, driver in enumerate(matched_drivers, start=1):
             driver_text = f"{i}. 🚘 Мос ҳайдовчи:\n\n"
             driver_text += f"👤 Ҳайдовчи: {driver['name']}\n"
@@ -653,16 +699,76 @@ async def recommend_multiple_drivers_to_passenger(passenger_id, user_order, bot)
             ])
 
             # Юбориш
-            await bot.send_message(
+            msg = await bot.send_message(
                 chat_id=passenger_id,
                 text=driver_text,
                 reply_markup=choose_btn,
                 parse_mode="HTML"
             )
 
+            # ✅ Ҳар бир юборилган хабарни сақлаш
+            sent_recommendations[passenger_id].append({
+                "chat_id": passenger_id,
+                "message_id": msg.message_id,
+                "driver_id": driver["id"]
+            })
+
     except Exception as e:
         print(f"❌ recommend_multiple_drivers_to_passenger хатолик: {e}")
         await bot.send_message(passenger_id, "❌ Хатолик юз берди. Илтимос, кейинроқ қайта уриниб кўринг.")
+
+async def delete_unselected_driver_messages(passenger_id, selected_driver_id, bot):
+    try:
+        recommendations = sent_recommendations.get(passenger_id, [])
+        for rec in recommendations:
+            if rec["driver_id"] != selected_driver_id:
+                try:
+                    await bot.delete_message(rec["chat_id"], rec["message_id"])
+                except Exception as e:
+                    print(f"❌ Хабарни ўчиришда хатолик: {e}")
+        sent_recommendations.pop(passenger_id, None)
+    except Exception as e:
+        print(f"❌ delete_unselected_driver_messages хатолик: {e}")
+
+async def edit_selected_driver_message(passenger_id: str, driver_id: str, passenger: dict, driver: dict, bot):
+    selected_msg = next(
+        (item for item in sent_recommendations.get(passenger_id, [])
+         if item["driver_id"] == driver_id),
+        None
+    )
+
+    if not selected_msg:
+        return  # Хабар топилмади
+
+    order = passenger.get("order", {})
+
+    # Янгиланган хабар матни
+    edited_text = (
+        f"🚘 Мос ҳайдовчи:\n\n"
+        f"👤 Ҳайдовчи: {driver.get('first_name', 'Номаълум')}\n"
+        f"🚗 Автомобил: {driver.get('car_model', 'Номаълум')}\n"
+        f"📍 Йўналиш: {order.get('from_district')} ➝ {order.get('to_district')}\n"
+        f"📅 Сана: {order.get('date')}\n"
+        f"⏰ Вақт: {order.get('time')}\n\n"
+        f"__✅ Ҳайдовчига хабар юборилди, агар 10 дақиқада жавоб бермаса, навбатдаги ҳайдовчилар юборилади.__"
+    )
+
+    # Янгиланган тугма
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🔁 Навбатдаги ҳайдовчилар", callback_data="next_driver_list")
+    ]])
+
+    try:
+        await bot.edit_message_text(
+            chat_id=selected_msg["chat_id"],
+            message_id=selected_msg["message_id"],
+            text=edited_text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        print(f"❗️ Хабарни таҳрир қилишда хатолик: {e}")
+
 # ----------------------------------------------------------------------------------------
 
 time_ranges = {
