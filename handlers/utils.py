@@ -378,16 +378,15 @@ async def save_order(user_id, user_type, bot):
     if user_type == "passenger":
         order_info_text += f"💰 Нарх: {new_order.get('price', 'Номаълум')} сўм\n"
 
-    try:
-        await bot.send_message(
-            chat_id=ADMINS,
-            text=order_info_text,
-            reply_markup=details_button
-        )
-
-    except Exception as e:
-        print(f"❌ Админга хабар юборилмади: {e}")
-
+    for admin_id in ADMINS:
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=order_info_text,
+                reply_markup=details_button
+            )
+        except Exception as e:
+            print(f"❌ Админга хабар юборилмади ({admin_id}): {e}")
 
     return new_order
 

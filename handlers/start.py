@@ -6,6 +6,8 @@ from aiogram import Bot, Router, F, types
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.enums.parse_mode import ParseMode
+from aiogram.utils.markdown import hbold, hitalic
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
@@ -1056,11 +1058,36 @@ async def show_my_invites(callback_query: types.CallbackQuery):
     # Унинг статуси (driver / passenger)
     user_status = user_info.get("status", "Аниқланмаган")
 
+    # 👥 Бонусни ҳисоблаш (иккала базадан)
+    driver_data = load_json(DRIVER_PATH)
+    passenger_data = load_json(PASSENGER_PATH)
+
+    driver_bonus = driver_data.get(user_id, {}).get("bonus", 0)
+    passenger_bonus = passenger_data.get(user_id, {}).get("bonus", 0)
+
+    total_bonus = driver_bonus + passenger_bonus
+
+    # Бонус маълумотини алоҳида файллардан оламиз
+    bonus = 0
+    if user_status == "new_user":
+        user_status = "Янги фойдаланувчи"  # Янги фойдаланувчи бўлса, статусни ўзгартириб қўямиз
+    elif user_status == "passenger":
+        passenger_data = load_json(PASSENGER_PATH)
+        bonus = passenger_data.get(user_id, {}).get("bonus", 0)
+        user_status = "Йўловчи"  # Йўловчи бўлса, статусни ўзгартириб қўямиз
+    elif user_status == "driver":
+        driver_data = load_json(DRIVER_PATH)
+        bonus = driver_data.get(user_id, {}).get("bonus", 0)
+        user_status = "Ҳайдовчи"   # Ҳайдовчи бўлса, статусни ўзгартириб қўямиз
+    else:
+        user_status = "Аниқланмаган"
+
     # 📊 Асосий статистика
     text = (
         f"📊 Сизнинг статистика:\n\n"
-        f"👤 Статус: {user_status.capitalize()}\n"
-        f"👥 Таклиф қилинган дўстлар сони: {invited_count} та\n"
+        f"👤 Статус:  {user_status.capitalize()}\n"
+        f"👥 Таклиф қилинган дўстлар сони:  {invited_count} та\n"
+        f"🎁 Жами бонус:  <b>{total_bonus} сўм</b>\n"
     )
 
     # 👥 Агар таклиф қилинганлар бор бўлса, уларнинг исмларини чиқарамиз
@@ -1073,7 +1100,7 @@ async def show_my_invites(callback_query: types.CallbackQuery):
     else:
         text += "\n⏳ Ҳали дўст таклиф қилинмаган."
 
-    await callback_query.message.answer(text)
+    await callback_query.message.answer(text, parse_mode="HTML")
     await callback_query.answer()
 
 async def check_today_departures(bot):
@@ -1120,6 +1147,72 @@ async def show_drivers_list(callback_query: CallbackQuery):
 
     await callback_query.message.answer(text, parse_mode="HTML")
 
+PAGE_SIZE = 5  # Ҳар саҳифада 5 та йўловчи
+
+def get_passenger_keyboard(page: int, total: int) -> InlineKeyboardMarkup:
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton(text="⏪ Олдинги", callback_data=f"show_passengers_page_{page - 1}"))
+    if page * PAGE_SIZE < total:
+        buttons.append(InlineKeyboardButton(text="⏩ Кейингиси", callback_data=f"show_passengers_page_{page + 1}"))
+    return InlineKeyboardMarkup(inline_keyboard=[buttons]) if buttons else None
+
+@router.callback_query(F.data.startswith("show_passengers_list"))
+@router.callback_query(F.data.startswith("show_passengers_page_"))
+async def show_passengers_list(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+    if user_id not in ADMINS:
+        return
+
+    # Саҳифа рақамини аниқлаш
+    data = callback_query.data
+    if data == "show_passengers_list":
+        page = 1
+    else:
+        try:
+            page = int(data.replace("show_passengers_page_", ""))
+        except ValueError:
+            page = 1
+
+    passengers = load_passenger()
+
+    passenger_items = list(passengers.items())
+    total = len(passenger_items)
+    start = (page - 1) * PAGE_SIZE
+    end = start + PAGE_SIZE
+
+    if start >= total:
+        await callback_query.message.answer("⛔️ Бу саҳифада йўловчилар йўқ.")
+        return
+
+    text = f"<b>🧍‍♂️ Йўловчилар рўйхати (саҳифа {page}):</b>\n\n"
+
+    for idx, (passenger_id, passenger_data) in enumerate(passenger_items[start:end], start + 1):
+        try:
+            user = await bot.get_chat(passenger_id)
+            full_name = user.full_name
+            username = f"@{user.username}" if user.username else "–"
+        except Exception:
+            full_name = "❓ Номаълум"
+            username = "–"
+
+        bonus = passenger_data.get("bonus", 0)
+        phone = passenger_data.get("phone", "–")
+        text += (
+            f"{idx}.  <b>{full_name}</b>\n"
+            f"🆔  <code>{passenger_id}</code>\n"
+            f"{username}\n"
+            f"📞 Тел:  <b>{phone}</b>\n"
+            f"🎁 Бонус:  <b>{bonus} сўм</b>\n"
+            f"──────────────\n\n"
+        )
+
+    keyboard = get_passenger_keyboard(page, total)
+
+    try:
+        await callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+    except TelegramBadRequest:
+        await callback_query.answer("❗ Эски хабарни янгилаб бўлмади.")
 
 @router.callback_query(lambda c: c.data in [
     "driver", "passenger", "change_user_status",
@@ -1149,15 +1242,28 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         #if str(user_id) not in ADMINS:
             return
 
+        stats = get_bot_statistics()  # ✅ Статистика
+        
+        drivers_count = stats.get("total_drivers", 0)
+        passengers_count = stats.get("total_passengers", 0)
+        driver_orders = stats.get("total_orders_drivers", 0)
+        passenger_orders = stats.get("total_orders_passengers", 0)
+        #total_income = stats.get("total_income", 0)
+        #total_users = stats.get("total_users", 0)
+        #total_feedbacks = stats.get("total_feedbacks", 0)
+        #total_referrals = stats.get("total_referrals", 0)
+        #total_bonus = stats.get("total_bonus", 0)
+        #total_invited = stats.get("total_invited", 0)
+
         # Инлайн клавиатура тузиш
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
-            [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
+            #[InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
-            [InlineKeyboardButton(text="🚘 Ҳайдовчилар рўйхати", callback_data="show_drivers_list")],
-            [InlineKeyboardButton(text="🚗 Ҳайдовчи ордерлари", callback_data="view_order_driver")],
-            [InlineKeyboardButton(text="👥 Йўловчилар рўйхати", callback_data="show_passengers_list")],
-            [InlineKeyboardButton(text="🧍‍♂️ Йўловчи ордерлари", callback_data="view_order_passenger")],
+            [InlineKeyboardButton(text=f"🚘 Ҳайдовчилар рўйхати ({drivers_count})", callback_data="show_drivers_list")],
+            [InlineKeyboardButton(text=f"🚗 Ҳайдовчи ордерлари ({driver_orders})", callback_data="view_order_driver")],
+            [InlineKeyboardButton(text=f"👥 Йўловчилар рўйхати ({passengers_count})", callback_data="show_passengers_list")],
+            [InlineKeyboardButton(text=f"🧍‍♂️ Йўловчи ордерлари ({passenger_orders})", callback_data="view_order_passenger")],
             [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
         ])
     
@@ -1481,7 +1587,7 @@ async def show_statistics(callback_query: CallbackQuery):
     # 📥 Барча маълумотларни юклаш
     stats = get_bot_statistics()
     users = load_users()
-    file_path = create_statistics_chart(stats)
+    #file_path = create_statistics_chart(stats)
 
     # 📊 Фойдаланувчи турлари бўйича ҳисоблаш
     new_users = sum(1 for u in users.values() if u.get("status") == "new_user")
@@ -1519,9 +1625,9 @@ async def show_statistics(callback_query: CallbackQuery):
     #        await callback_query.message.answer_photo(photo, caption="📊 Диаграмма")
     #except Exception as e:
     #    logging.error(f"Диаграмма яратишда хатолик: {e}")
-    if file_path:
-        chart = FSInputFile(file_path)
-        await bot.send_photo(callback_query.from_user.id, photo=chart, caption="📊 Диаграмма")
+    #if file_path:
+    #    chart = FSInputFile(file_path)
+    #    await bot.send_photo(callback_query.from_user.id, photo=chart, caption="📊 Диаграмма")
 
 def create_statistics_chart(stats):
     try:

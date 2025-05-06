@@ -1,24 +1,28 @@
 {
     "6580111328": {
         "phone": "+998945454555",
-        "order": {
-            "status": "new",
-            "to_region": "Тошкент ш.",
-            "to_district": "Юнусобод",
-            "from_region": "Наманган",
-            "from_district": "Косонсой",
-            "date": "2025-05-05",
-            "time": "20:00 - 23:59",
-            "price": 142000,
-            "order_number": 1,
-            "status_timestamps": {
-                "created": "2025-05-05 03:59:56"
-            },
-            "chosen_driver_id": null,
-            "excluded_driver_ids": [
-                "7233540342"
-            ]
-        }
+        "order_history": [
+            {
+                "status": "cancelled",
+                "to_region": "Тошкент ш.",
+                "to_district": "Юнусобод",
+                "from_region": "Наманган",
+                "from_district": "Косонсой",
+                "date": "2025-05-07",
+                "time": "20:00 - 23:59",
+                "price": 142000,
+                "order_number": 1,
+                "status_timestamps": {
+                    "created": "2025-05-05 03:59:56"
+                },
+                "chosen_driver_id": null,
+                "excluded_driver_ids": [
+                    "7233540342"
+                ],
+                "day": null,
+                "cancelled_at": "2025-05-07 00:31:55"
+            }
+        ]
     },
     "6534449376": {
         "order": {
@@ -27,7 +31,7 @@
             "to_district": "Ангрен",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-03",
+            "date": "2025-05-07",
             "time": "06:00 - 19:59"
         }
     },
@@ -38,7 +42,7 @@
             "to_district": "Шайхонтоҳур",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-02",
+            "date": "2025-05-07",
             "time": "16:00 - 19:59",
             "price": 140000
         },
@@ -53,7 +57,7 @@
             "to_district": "Косонсой",
             "from_region": "Тошкент ш.",
             "from_district": "Сергели",
-            "date": "2025-05-02",
+            "date": "2025-05-08",
             "time": "20:00 - 23:59",
             "price": 140000
         },
@@ -68,7 +72,7 @@
             "to_district": "Косонсой",
             "from_region": "Тошкент в.",
             "from_district": "Яшнобод",
-            "date": "2025-05-02",
+            "date": "2025-05-08",
             "time": "20:00 - 23:59"
         },
         "order_history": []
@@ -80,7 +84,7 @@
             "to_district": "Косонсой",
             "from_region": "Тошкент в.",
             "from_district": "Оҳангарон",
-            "date": "2025-05-02",
+            "date": "2025-05-08",
             "time": "16:00 - 19:59",
             "price": 134000
         },
@@ -93,7 +97,7 @@
             "to_district": "Косонсой",
             "from_region": "Тошкент ш.",
             "from_district": "Яшнобод",
-            "date": "2025-05-02",
+            "date": "2025-05-07",
             "time": "20:00 - 23:59",
             "price": 140000
         },
@@ -106,7 +110,7 @@
             "to_district": "Чилонзор",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-03",
+            "date": "2025-05-07",
             "time": "20:00 - 23:59",
             "price": 137000
         },
@@ -148,7 +152,7 @@
             "to_district": "Мирзо Улуғбек",
             "from_region": "Наманган",
             "from_district": "Косонсой",
-            "date": "2025-05-03",
+            "date": "2025-05-08",
             "time": "06:00 - 11:59"
         },
         "order_history": []
@@ -165,5 +169,44 @@
             "price": 139000
         },
         "order_history": []
+    },
+    "8091457920": {
+        "order": {
+            "status": "draft",
+            "to_region": "Наманган",
+            "to_district": "Косонсой",
+            "from_region": "Тошкент ш.",
+            "from_district": "Миробод",
+            "date": "2025-05-07",
+            "time": "06:00 - 11:59",
+            "price": 140000
+        },
+        "order_history": [],
+        "bonus": 2000
+    },
+    "982239453": {
+        "order": {
+            "status": "draft",
+            "to_region": "Тошкент ш.",
+            "to_district": "Юнусобод",
+            "from_region": "Наманган"
+        },
+        "order_history": [],
+        "bonus": 1000
+    },
+    "209550763": {
+        "order": {
+            "status": "draft",
+            "to_region": "Наманган",
+            "to_district": "Косонсой",
+            "from_region": "Тошкент ш.",
+            "from_district": "Чилонзор",
+            "date": "2025-05-07",
+            "time": "12:00 - 15:59",
+            "price": 140000
+        },
+        "order_history": [],
+        "waiting_for_phone": false,
+        "phone": "+998945755500"
     }
 }

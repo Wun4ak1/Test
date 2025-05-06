@@ -13,7 +13,7 @@
         "first_name": "🌹🌹Фирдавс🌹🌹"
     },
     "209550763": {
-        "status": "driver",
+        "status": "passenger",
         "first_name": "ᅠ",
         "invited_users": [
             "7233540342"
@@ -31,11 +31,6 @@
             "1241019542",
             "6580111328"
         ]
-    },
-    "6580111328": {
-        "status": "passenger",
-        "referrer": "7233540342",
-        "first_name": "Мустафохон"
     },
     "6534449376": {
         "status": "passenger"
@@ -143,5 +138,55 @@
     "5731643995": {
         "status": "new_user",
         "first_name": "Muhammad zohir"
+    },
+    "5630834609": {
+        "status": "new_user",
+        "first_name": "Нигора"
+    },
+    "136817688": {
+        "status": "new_user",
+        "referrer": "Шу ерга ёзинг..",
+        "first_name": "Channel"
+    },
+    "Шу ерга ёзинг..": {
+        "status": "new_user",
+        "invited_users": [
+            "136817688"
+        ]
+    },
+    "1970213975": {
+        "status": "new_user",
+        "first_name": "Laylo"
+    },
+    "8091457920": {
+        "status": "passenger",
+        "first_name": "F1rdavs🫂",
+        "invited_users": [
+            "982239453",
+            "7286501962"
+        ]
+    },
+    "982239453": {
+        "status": "passenger",
+        "referrer": "8091457920",
+        "first_name": "Саидхон",
+        "invited_users": [
+            "589868149"
+        ]
+    },
+    "589868149": {
+        "status": "new_user",
+        "referrer": "982239453",
+        "first_name": "☎️📞"
+    },
+    "6580111328": {
+        "status": "passenger",
+        "referrer": "7233540342",
+        "first_name": "Мустафохон"
+    },
+    "7286501962": {
+        "status": "passenger",
+        "referrer": "8091457920",
+        "first_name": "Саидхон"
     }
 }
