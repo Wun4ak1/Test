@@ -8,6 +8,7 @@ import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from config import TOKEN
 from handlers.utils import ensure_json_files_exist
+from handlers.start import add_missing_timestamps
 
 # Aiogram импортлари
 from aiogram import Bot, Dispatcher
@@ -28,6 +29,7 @@ print("🔄 Бот ишга туширилмоқда...")
 
 # Керакли .json файллар мавжудлигини текшириш ёки яратиш
 ensure_json_files_exist()
+#add_missing_timestamps()
 
 # Ботни ва диспетчерни яратиш
 bot = Bot(token=TOKEN)

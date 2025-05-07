@@ -5,12 +5,13 @@ import json
 from aiogram import Bot, Router, F, types
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, FSInputFile
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.enums.parse_mode import ParseMode
 from aiogram.utils.markdown import hbold, hitalic
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime
+import time
 from zoneinfo import ZoneInfo
 
 import sys
@@ -916,13 +917,17 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
             status_data[user_id] = {
                 "status": "new_user",
                 "referrer": referrer_id,
-                "first_name": message.from_user.first_name
+                "first_name": message.from_user.first_name,
+                "timestamp": time.time()
             }
 
             # ✅ Админга хабар юбориш
             full_name = message.from_user.full_name
             username = message.from_user.username or "—"
             for admin_id in ADMINS:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔍 Подробно", callback_data=f"user_detail:{user_id}")]
+                ])
                 try:
                     await bot.send_message(
                         admin_id,
@@ -932,6 +937,7 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
                             f"🔗 Username: @{username if username != '—' else 'йўқ'}\n"
                             f"🆔 ID: <code>{user_id}</code>"
                         ),
+                        reply_markup=keyboard,
                         parse_mode="HTML"
                     )
                 except Exception as e:
@@ -993,7 +999,8 @@ async def start_command(message: Message, state: FSMContext, bot: Bot, command: 
         if user_id not in status_data:
             status_data[user_id] = {
                 "status": "new_user",
-                "first_name": message.from_user.first_name
+                "first_name": message.from_user.first_name,
+                "timestamp": time.time()  # ⏱ биринчи уланган вақт
             }
             save_json(USER_STATUS_PATH, status_data)
 
@@ -1174,9 +1181,20 @@ async def show_passengers_list(callback_query: CallbackQuery):
         except ValueError:
             page = 1
 
+    # Маълумотларни юклаш
+    status_data = load_json(USER_STATUS_PATH)
     passengers = load_passenger()
 
-    passenger_items = list(passengers.items())
+    # Тартиблаш: timestamp бўйича (энг сўнги уланганлар юқорида)
+    sorted_passenger_ids = sorted(
+        passengers.keys(),
+        key=lambda uid: status_data.get(uid, {}).get("timestamp", 0),
+        reverse=True
+    )
+
+    # Кейин сортланганлардан рўйхат йиғилади
+    passenger_items = [(uid, passengers[uid]) for uid in sorted_passenger_ids]
+    #passenger_items = list(passengers.items())
     total = len(passenger_items)
     start = (page - 1) * PAGE_SIZE
     end = start + PAGE_SIZE
@@ -1187,33 +1205,74 @@ async def show_passengers_list(callback_query: CallbackQuery):
 
     text = f"<b>🧍‍♂️ Йўловчилар рўйхати (саҳифа {page}):</b>\n\n"
 
-    for idx, (passenger_id, passenger_data) in enumerate(passenger_items[start:end], start + 1):
-        try:
-            user = await bot.get_chat(passenger_id)
-            full_name = user.full_name
-            username = f"@{user.username}" if user.username else "–"
-        except Exception:
-            full_name = "❓ Номаълум"
-            username = "–"
+    user_statuses = load_users()
 
-        bonus = passenger_data.get("bonus", 0)
-        phone = passenger_data.get("phone", "–")
-        text += (
-            f"{idx}.  <b>{full_name}</b>\n"
-            f"🆔  <code>{passenger_id}</code>\n"
-            f"{username}\n"
-            f"📞 Тел:  <b>{phone}</b>\n"
-            f"🎁 Бонус:  <b>{bonus} сўм</b>\n"
-            f"──────────────\n\n"
-        )
+    for idx, (passenger_id, passenger_data) in enumerate(passenger_items[start:end], start + 1):
+        text += await format_passenger_display(bot, passenger_id, passenger_data, idx, user_statuses)
 
     keyboard = get_passenger_keyboard(page, total)
 
     try:
         await callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
     except TelegramBadRequest:
-        await callback_query.answer("❗ Эски хабарни янгилаб бўлмади.")
+        await callback_query.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
+# бугунги timestampни қўшиш функцияси
+def add_missing_timestamps():
+    status_data = load_users()  #: # load_json(USER_STATUS_PATH)
+    current_time = int(time.time())  # бугунги timestamp
+    #current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Сана сифатида
+
+    modified = False
+    for user_id, user_info in status_data.items():
+        if "timestamp" not in user_info:
+            user_info["timestamp"] = current_time
+            modified = True
+
+    if modified:
+        save_json(USER_STATUS_PATH, status_data)
+        print("✅ Timestamp'лар қўшилди.")
+    else:
+        print("ℹ️ Барча фойдаланувчиларда timestamp бор экан.")
+
+async def format_passenger_display(bot, passenger_id: str, passenger_data: dict, index: int, user_statuses: dict):
+    # 🧾 Telegram'дан маълумот олиш
+    try:
+        user = await bot.get_chat(passenger_id)
+        full_name = user.full_name
+        username = f"@{user.username}" if user.username else "–"
+    except TelegramForbiddenError:
+        full_name = "🚫 Аккаунт ўчирилган"
+        username = "–"
+    except Exception:
+        full_name = "❓ Номаълум"
+        username = "–"
+
+    phone = passenger_data.get("phone", "–")
+    bonus = passenger_data.get("bonus", 0)
+
+    # timestamp — user_statuses.json орқали
+    status_data = user_statuses.get(str(passenger_id), {})
+    timestamp = status_data.get("timestamp")
+    if timestamp:
+        joined_at = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        joined_at = "—"
+
+    # 🧮 Ҳисоблаш:
+    # 1 ҳафта = 7 кун = 7 × 24 × 60 × 60 = 604800 секунд.
+    # logging.info(f"User {passenger_id} timestamp: {timestamp}")
+
+    return (
+        f"{index}.  <b>{full_name}</b>\n"
+        f"🆔  <code>{passenger_id}</code>\n"
+        f"{username}\n"
+        f"📞 Тел:  <b>{phone}</b>\n"
+        f"🎁 Бонус:  <b>{bonus} сўм</b>\n"
+        f"🗓 Уланган сана: <b>{joined_at}</b>\n"
+        f"──────────────\n\n"
+    )
+    
 @router.callback_query(lambda c: c.data in [
     "driver", "passenger", "change_user_status",
     "admin", "upload_files", "view_order", "view_order_passenger", "view_order_driver"
@@ -1258,7 +1317,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         # Инлайн клавиатура тузиш
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
-            #[InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
+            [InlineKeyboardButton(text="📦 Доставка буюртмалари", callback_data="view_delivery_orders")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
             [InlineKeyboardButton(text=f"🚘 Ҳайдовчилар рўйхати ({drivers_count})", callback_data="show_drivers_list")],
             [InlineKeyboardButton(text=f"🚗 Ҳайдовчи ордерлари ({driver_orders})", callback_data="view_order_driver")],
@@ -1315,6 +1374,7 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 async def back_to_admin_panel(callback_query: CallbackQuery):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
+        [InlineKeyboardButton(text="📦 Доставка буюртмалари", callback_data="view_delivery_orders")],
         [InlineKeyboardButton(text="📋 Буюртмалар", callback_data="view_order")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
         [InlineKeyboardButton(text="📅 Бугунги ордерлар", callback_data="today_orders")],

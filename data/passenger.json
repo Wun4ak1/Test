@@ -1,28 +1,6 @@
 {
     "6580111328": {
-        "phone": "+998945454555",
-        "order_history": [
-            {
-                "status": "cancelled",
-                "to_region": "Тошкент ш.",
-                "to_district": "Юнусобод",
-                "from_region": "Наманган",
-                "from_district": "Косонсой",
-                "date": "2025-05-07",
-                "time": "20:00 - 23:59",
-                "price": 142000,
-                "order_number": 1,
-                "status_timestamps": {
-                    "created": "2025-05-05 03:59:56"
-                },
-                "chosen_driver_id": null,
-                "excluded_driver_ids": [
-                    "7233540342"
-                ],
-                "day": null,
-                "cancelled_at": "2025-05-07 00:31:55"
-            }
-        ]
+        "phone": "+998945454555"
     },
     "6534449376": {
         "order": {
@@ -168,7 +146,8 @@
             "time": "06:00 - 11:59",
             "price": 139000
         },
-        "order_history": []
+        "order_history": [],
+        "phone": "998934850022"
     },
     "8091457920": {
         "order": {
@@ -182,17 +161,21 @@
             "price": 140000
         },
         "order_history": [],
-        "bonus": 2000
+        "bonus": 5000
     },
     "982239453": {
         "order": {
             "status": "draft",
             "to_region": "Тошкент ш.",
             "to_district": "Юнусобод",
-            "from_region": "Наманган"
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-05-09",
+            "time": "06:00 - 11:59",
+            "price": 140000
         },
         "order_history": [],
-        "bonus": 1000
+        "bonus": 3000
     },
     "209550763": {
         "order": {
@@ -208,5 +191,20 @@
         "order_history": [],
         "waiting_for_phone": false,
         "phone": "+998945755500"
+    },
+    "6540819295": {
+        "order": {
+            "status": "draft",
+            "to_region": "Тошкент ш.",
+            "to_district": "Янгихаёт",
+            "from_region": "Наманган",
+            "from_district": "Косонсой",
+            "date": "2025-05-08",
+            "time": "00:00 - 05:59",
+            "price": 139000
+        },
+        "order_history": [],
+        "waiting_for_phone": false,
+        "phone": "998945005551"
     }
 }

@@ -32,6 +32,7 @@ def start_kb(user_id: int) -> InlineKeyboardMarkup:
 
     elif user_status == "passenger" or (user_status and user_status.startswith("location_")):
         add_button("📍 Манзилни танланг", "add_order")   # passenger add_p
+        #add_button("📦 Доставка буюртмаси", "make_delivery")
     
     # Ҳам driver, ҳам passenger учун умумий тугмалар
     if user_status in ("driver", "passenger") or (user_status and user_status.startswith("location_")):
