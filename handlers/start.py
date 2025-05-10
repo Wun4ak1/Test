@@ -1127,6 +1127,40 @@ async def check_today_departures(bot):
                 reply_markup=create_departure_confirmation_keyboard(driver_id)
             )
 
+
+# Фойдаланувчи рўйхатидан бирини танлаш имкони
+@router.callback_query(F.data == "admin_add_order")
+async def admin_add_order_start(callback_query: CallbackQuery):
+    users = load_users()
+    # Фақат "passenger" ёки "driver" бўлганларни чиқариш
+    buttons = []
+    for user_id, u in users.items():
+        name = u.get("first_name", "Номаълум")
+        status = u.get("status", "—")
+        if status in ["driver", "passenger"]:
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"{name} ({status})",
+                    callback_data=f"admin_select_user_{user_id}"
+                )
+            ])
+    if not buttons:
+        await callback_query.message.answer("❌ Киритилиши мумкин бўлган фойдаланувчи топилмади.")
+        return
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await callback_query.message.edit_text("👥 Фойдаланувчини танланг:", reply_markup=kb)
+
+@router.callback_query(lambda c: c.data.startswith("admin_select_user_"))
+async def admin_selected_user(callback_query: CallbackQuery, state: FSMContext):
+    selected_user_id = callback_query.data.split("_")[-1]
+    await state.update_data(selected_user_id=selected_user_id)
+    await callback_query.message.edit_text(
+        f"👤 Танланган фойдаланувчи: <code>{selected_user_id}</code>\n\nБуюртма маълумотларини киритинг.",
+        parse_mode="HTML",
+        reply_markup=await get_order_input_kb("admin")  # мавжуд буйрутма киритиш тугмалари
+    )
+
+
 # Ҳайдовчилар рўйхати чиқарадиган функция
 @router.callback_query(F.data == "show_drivers_list")
 async def show_drivers_list(callback_query: CallbackQuery):
@@ -1162,6 +1196,14 @@ def get_passenger_keyboard(page: int, total: int) -> InlineKeyboardMarkup:
         buttons.append(InlineKeyboardButton(text="⏪ Олдинги", callback_data=f"show_passengers_page_{page - 1}"))
     if page * PAGE_SIZE < total:
         buttons.append(InlineKeyboardButton(text="⏩ Кейингиси", callback_data=f"show_passengers_page_{page + 1}"))
+    return InlineKeyboardMarkup(inline_keyboard=[buttons]) if buttons else None
+
+def get_user_keyboard(page: int, total: int) -> InlineKeyboardMarkup:
+    buttons = []
+    if page > 1:
+        buttons.append(InlineKeyboardButton(text="⏪ Олдинги", callback_data=f"show_users_page_{page - 1}"))
+    if page * PAGE_SIZE < total:
+        buttons.append(InlineKeyboardButton(text="⏩ Кейингиси", callback_data=f"show_users_page_{page + 1}"))
     return InlineKeyboardMarkup(inline_keyboard=[buttons]) if buttons else None
 
 @router.callback_query(F.data.startswith("show_passengers_list"))
@@ -1211,6 +1253,58 @@ async def show_passengers_list(callback_query: CallbackQuery):
         text += await format_passenger_display(bot, passenger_id, passenger_data, idx, user_statuses)
 
     keyboard = get_passenger_keyboard(page, total)
+
+    try:
+        await callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
+    except TelegramBadRequest:
+        await callback_query.answer(text, parse_mode="HTML", reply_markup=keyboard)
+
+@router.callback_query(F.data.startswith("show_users_list"))
+@router.callback_query(F.data.startswith("show_users_page_"))
+async def show_users_list(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+    if user_id not in ADMINS:
+        return
+
+    # Саҳифа рақамини аниқлаш
+    data = callback_query.data
+    if data == "show_users_list":
+        page = 1
+    else:
+        try:
+            page = int(data.replace("show_users_page_", ""))
+        except ValueError:
+            page = 1
+
+    # Маълумотларни юклаш
+    users = load_users()
+
+    # Тартиблаш: timestamp бўйича (энг сўнги уланганлар юқорида)
+    sorted_user_ids = sorted(
+        users.keys(),
+        key=lambda uid: users.get(uid, {}).get("timestamp", 0),
+        reverse=True
+    )
+
+    # Кейин сортланганлардан рўйхат йиғилади
+    user_items = [(uid, users[uid]) for uid in sorted_user_ids]
+    #user_items = list(users.items())
+    total = len(user_items)
+    start = (page - 1) * PAGE_SIZE
+    end = start + PAGE_SIZE
+
+    if start >= total:
+        await callback_query.message.answer("⛔️ Бу саҳифада йўловчилар йўқ.")
+        return
+
+    text = f"<b>🧍‍♂️ Йўловчилар рўйхати (саҳифа {page}):</b>\n\n"
+
+    user_statuses = load_users()
+
+    for idx, (user_id, user_data) in enumerate(user_items[start:end], start + 1):
+        text += await format_user_display(bot, user_id, user_data, idx, user_statuses)
+
+    keyboard = get_user_keyboard(page, total)
 
     try:
         await callback_query.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard)
@@ -1272,6 +1366,46 @@ async def format_passenger_display(bot, passenger_id: str, passenger_data: dict,
         f"🗓 Уланган сана: <b>{joined_at}</b>\n"
         f"──────────────\n\n"
     )
+
+async def format_user_display(bot, user_id: str, user_data: dict, index: int, user_statuses: dict):
+    # 🧾 Telegram'дан маълумот олиш
+    try:
+        user = await bot.get_chat(user_id)
+        full_name = user.full_name
+        username = f"@{user.username}" if user.username else "–"
+    except TelegramForbiddenError:
+        full_name = "🚫 Аккаунт ўчирилган"
+        username = "–"
+    except Exception:
+        full_name = "❓ Номаълум"
+        username = "–"
+
+    status = user_data.get("status", "–")
+    phone = user_data.get("phone", "–")
+    bonus = user_data.get("bonus", 0)
+
+    # timestamp — user_statuses.json орқали
+    status_data = user_statuses.get(str(user_id), {})
+    timestamp = status_data.get("timestamp")
+    if timestamp:
+        joined_at = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        joined_at = "—"
+
+    # 🧮 Ҳисоблаш:
+    # 1 ҳафта = 7 кун = 7 × 24 × 60 × 60 = 604800 секунд.
+    # logging.info(f"User {user_id} timestamp: {timestamp}")
+
+    return (
+        f"{index}.  <b>{full_name}</b>\n"
+        f"🆔  <code>{user_id}</code>\n"
+        f"{username}\n"
+        f"status:  <b>{status}</b>\n"
+        f"📞 Тел:  <b>{phone}</b>\n"
+        f"🎁 Бонус:  <b>{bonus} сўм</b>\n"
+        f"🗓 Уланган сана: <b>{joined_at}</b>\n"
+        f"──────────────\n\n"
+    )
     
 @router.callback_query(lambda c: c.data in [
     "driver", "passenger", "change_user_status",
@@ -1300,6 +1434,28 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
         if user_id not in ADMINS:
         #if str(user_id) not in ADMINS:
             return
+        
+        users = load_users()
+        
+        total_users = len(users)
+
+        # Инлайн клавиатура тузиш
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Буюртма киритиш (фойдаланувчи)", callback_data="admin_add_order")],
+            [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
+            [InlineKeyboardButton(text="📦 Доставка буюртмалари", callback_data="view_delivery_orders")],
+            [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
+            [InlineKeyboardButton(text=f"📋 Фойдаланувчилар рўйхати ({total_users})", callback_data="show_users_list")],
+            [InlineKeyboardButton(text="🧾 Буюртмалар рўйхати", callback_data="view_order")],
+            [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
+        ])
+    
+        await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
+
+    elif data == "view_order":
+        if user_id not in ADMINS:
+        #if str(user_id) not in ADMINS:
+            return
 
         stats = get_bot_statistics()  # ✅ Статистика
         
@@ -1316,26 +1472,14 @@ async def handle_callback(callback_query: CallbackQuery, state: FSMContext):
 
         # Инлайн клавиатура тузиш
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🛠 Ҳайдовчи тасдиғи", callback_data="approve_panel")],
-            [InlineKeyboardButton(text="📦 Доставка буюртмалари", callback_data="view_delivery_orders")],
-            [InlineKeyboardButton(text="📊 Статистика", callback_data="statistika")],
             [InlineKeyboardButton(text=f"🚘 Ҳайдовчилар рўйхати ({drivers_count})", callback_data="show_drivers_list")],
             [InlineKeyboardButton(text=f"🚗 Ҳайдовчи ордерлари ({driver_orders})", callback_data="view_order_driver")],
             [InlineKeyboardButton(text=f"👥 Йўловчилар рўйхати ({passengers_count})", callback_data="show_passengers_list")],
             [InlineKeyboardButton(text=f"🧍‍♂️ Йўловчи ордерлари ({passenger_orders})", callback_data="view_order_passenger")],
-            [InlineKeyboardButton(text="📁 Файлларни юклаш", callback_data="upload_files")]
+            [InlineKeyboardButton(text=f"🔙 Орқага", callback_data="admin_back_to_panel")]
         ])
     
         await callback_query.message.edit_text("👮 Админ панел!", reply_markup=keyboard, parse_mode="Markdown")
-
-    elif data == "view_order":
-        if user_id not in ADMINS:
-            return
-        # Админ учун охирги ордерларни кўрсатиш
-        await show_recent_orders(callback_query.message, user_type="driver")  # ёки "passenger" керак бўлса
-        #await show_recent_orders(callback_query.message, user_type="passenger")  # Йўловчиларнинг ордерларини кўрсатиш
-        # Агар ҳайдовчиларнинг ордерларини кўрсатиш керак бўлса, "driver"ни ўрнатинг:
-        # await show_recent_orders(callback_query.message, user_type="driver")
 
     elif data == "view_order_passenger":
         if user_id not in ADMINS:

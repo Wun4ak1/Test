@@ -225,12 +225,6 @@
         "first_name": "☎️📞",
         "timestamp": 1746644438
     },
-    "6580111328": {
-        "status": "passenger",
-        "referrer": "7233540342",
-        "first_name": "Мустафохон",
-        "timestamp": 1746039638
-    },
     "7286501962": {
         "status": "passenger",
         "referrer": "8091457920",
@@ -272,9 +266,30 @@
         "timestamp": 1746644438
     },
     "5621826795": {
-        "status": "new_user",
+        "status": "passenger",
         "referrer": "982239453",
         "first_name": "Саидхон",
         "timestamp": 1746644438
+    },
+    "8131855371": {
+        "status": "driver",
+        "first_name": "Husniddin",
+        "timestamp": 1746688848.362753
+    },
+    "6893969728": {
+        "status": "passenger",
+        "first_name": "Шерхон",
+        "timestamp": 1746695026.8002434
+    },
+    "438530534": {
+        "status": "passenger",
+        "first_name": "Мамаджанов Кодир Каримжонович",
+        "timestamp": 1746769404.4007633
+    },
+    "6580111328": {
+        "status": "passenger",
+        "referrer": "7233540342",
+        "first_name": "Мустафохон",
+        "timestamp": 1746881697.1806626
     }
 }

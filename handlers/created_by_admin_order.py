@@ -1,11 +1,8 @@
-# handlers/edit_order.py  Манзил, вилоят, сана ва вақтни танлаш билан боғлиқ умумий функциялар
+# handlers/created_by_admin_order.py  Манзил, вилоят, сана ва вақтни танлаш билан боғлиқ умумий функциялар
 import json
-import os
 from aiogram import Router, Bot, types, F
-#from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils import (
     load_orders, get_order, save_order, save_driver_order, save_passenger_order, get_driver_order, get_passenger_order,
     send_or_edit_text, recommend_multiple_drivers_to_passenger, is_match, 
@@ -18,9 +15,8 @@ from common_order import (
 )
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-#from collections import defaultdict
 from states import EditOrder
-#import logging
+import logging
 
 router = Router()
 
@@ -40,7 +36,7 @@ def generate_order_preview(order: dict, highlight: str = "") -> str:
         f"{bold_if('to', f'📍 Қайерга: {order.get('to_region', '')} - {order.get('to_district', '')}')}\n"
         f"{bold_if('date', f'📅 Санаси: {order.get('date', '')}')}\n"
         f"{bold_if('time', f'⏰ Вақти: {order.get('time', '')}')}"
-        f"{price_text}"  # 👉 Нарх қўшилди
+        f"{price_text}"
     )
 
 def format_order_with_edit_buttons(order):
@@ -139,8 +135,6 @@ async def handle_edit_from_location(callback_query: CallbackQuery, state: FSMCon
     # callback_query.data фақат "_edit_from_location" бўлса, user_type'ни state'дан оламиз
     data = await state.get_data()
     user_type = data.get("user_type")  # "passenger" ёки "driver"
-
-    # print(f"handle_edit_from_location callback.data: {callback_query.data}")
 
     orders = load_orders(user_type)
     order = orders.get(user_id, {}).get("order")
@@ -456,8 +450,12 @@ async def adjust_price(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(lambda c: "_confirm_edit_" in c.data or c.data.endswith("_confirm_edit"))
 async def confirm_edit_field(callback_query: CallbackQuery, state: FSMContext, bot: Bot):
-    user_id = callback_query.from_user.id
-    data = await state.get_data()
+    state_data = await state.get_data()
+    user_id = str(state_data.get("user_id", callback_query.from_user.id))  # ✅ админ учун
+    created_by_admin = state_data.get("created_by_admin", False)
+
+    #user_id = callback_query.from_user.id
+    #data = await state.get_data()
 
     # Мисол: "driver_confirm_edit_to" → "driver", "to"
     parts = callback_query.data.split("_confirm_edit")
