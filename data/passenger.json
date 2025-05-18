@@ -185,7 +185,7 @@
             "price": 140000
         },
         "order_history": [],
-        "bonus": 3000
+        "bonus": 4000
     },
     "209550763": {
         "order": {
@@ -216,5 +216,18 @@
         "order_history": [],
         "waiting_for_phone": false,
         "phone": "998945005551"
+    },
+    "6177417866": {
+        "order": {
+            "status": "draft",
+            "to_region": "Тошкент ш.",
+            "to_district": "Юнусобод",
+            "from_region": "Самарқанд",
+            "from_district": "Самарқанд ш.",
+            "date": "2025-05-16",
+            "time": "00:00 - 05:59",
+            "price": 151000
+        },
+        "order_history": []
     }
 }
